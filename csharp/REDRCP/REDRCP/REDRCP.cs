@@ -17,6 +17,12 @@ namespace Kliskatek.REDRCP
                 _serialPort = new SerialPort();
                 _serialPort.PortName = serialPort;
                 _serialPort.BaudRate = 115200;
+                _serialPort.Parity = Parity.None;
+                _serialPort.DataBits = 8;
+                _serialPort.StopBits = StopBits.One;
+                _serialPort.Handshake = Handshake.None;
+                _serialPort.ReadTimeout = 500;
+                _serialPort.WriteTimeout = 500;
 
                 return true;
             }
