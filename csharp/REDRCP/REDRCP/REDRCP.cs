@@ -8,11 +8,10 @@ namespace Kliskatek.REDRCP
     /// </summary>
     public partial class REDRCP
     {
-        private SerialPort _serialPort;
+        private SerialPort _serialPort = new();
         private int _autoRead2Ongoing = 0;
-        private Thread _processRxBufferThread;
 
-        private EpcCallback _epcCallback;
+        private AutoRead2NotificationCallback _autoRead2NotificationCallback;
 
         public bool Connect(string serialPort)
         {
@@ -28,6 +27,8 @@ namespace Kliskatek.REDRCP
                 _serialPort.ReadTimeout = 500;
                 _serialPort.WriteTimeout = 500;
 
+                _serialPort.Open();
+
                 ClearReceivedCommandAnswerBuffer();
 
                 if (!_serialPort.IsOpen)
@@ -37,10 +38,6 @@ namespace Kliskatek.REDRCP
                 }
                 ResetRcpDecodeFsm();
                 _serialPort.DataReceived += OnSerialPortDataReceived;
-
-                _processRxBufferThread = new Thread(ProcessRxByteBuffer);
-                Interlocked.Exchange(ref _runProcessRxBufferThread, 1);
-                _processRxBufferThread.Start();
 
                 return true;
             }
@@ -55,10 +52,8 @@ namespace Kliskatek.REDRCP
         {
             try
             {
-                Interlocked.Exchange(ref _runProcessRxBufferThread, 0);
-                _processRxBufferThread.Join();
                 _serialPort.Close();
-                return true;
+                return !_serialPort.IsOpen;
             }
             catch (Exception e)
             {
@@ -78,7 +73,46 @@ namespace Kliskatek.REDRCP
             return true;
         }
 
+        public bool StartAutoRead2(AutoRead2NotificationCallback callback)
+        {
+            try
+            {
+                _autoRead2NotificationCallback = callback;
+                Interlocked.Exchange(ref _autoRead2Ongoing, 1);
+                var result = ProcessCommand(MessageCode.StartAutoRead2);
+                if ((result is not null) && (result.Count == 1) && (result[0] == 0x00))
+                    return true;
+                Interlocked.Exchange(ref _autoRead2Ongoing, 0);
+                return false;
 
+            }
+            catch (Exception e)
+            {
+                Log.Warning(e, "Exception thrown");
+                Interlocked.Exchange(ref _autoRead2Ongoing, 0);
+                return false;
+            }
+        }
+
+        public bool StopAutoRead2()
+        {
+            try
+            {
+                var result = ProcessCommand(MessageCode.StopAutoRead2);
+                if ((result is not null) && (result.Count == 1) && (result[0] == 0x00))
+                {
+                    Interlocked.Exchange(ref _autoRead2Ongoing, 0);
+                    return true;
+                }
+
+                return false;
+            }
+            catch (Exception e)
+            {
+                Log.Warning(e, "Exception thrown");
+                return false;
+            }
+        }
 
         private List<byte>? ProcessCommand(MessageCode messageCode, List<byte>? commandPayload = null)
         {
