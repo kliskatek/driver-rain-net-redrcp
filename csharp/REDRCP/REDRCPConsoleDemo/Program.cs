@@ -15,6 +15,9 @@ namespace Kliskatek.REDRCP
             if (!reader.Connect("COM4"))
                 return;
 
+            if (reader.GetReaderFirmwareVersion(out var firmwareVersion))
+                Console.WriteLine($"Firmware version = {firmwareVersion}");
+
             for (int i = 0; i < 1; i++)
             {
                 reader.StartAutoRead2(AutoRead2DelegateMethod);
@@ -25,8 +28,6 @@ namespace Kliskatek.REDRCP
 
                 Thread.Sleep(2000);
             }
-
-            
 
             if(!reader.Disconnect())
                 Console.WriteLine("Serial port not disconnected");
