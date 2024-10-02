@@ -1,7 +1,7 @@
-﻿using System.IO.Ports;
-using Serilog;
+﻿using Serilog;
+using System.IO.Ports;
 
-namespace Kliskatek.REDRCP
+namespace Kliskatek.Driver.Rain.REDRCP
 {
     /// <summary>
     /// Provides higher level access to common RED RCP functionality. Works with serial port connection.

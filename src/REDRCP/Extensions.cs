@@ -1,6 +1,6 @@
 ﻿using System.IO.Ports;
 
-namespace Kliskatek.REDRCP
+namespace Kliskatek.Driver.Rain.REDRCP
 {
     public static class Extensions
     {

@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Kliskatek.Driver.Rain.REDRCP</AssemblyName>
+    <RootNamespace>Kliskatek.Driver.Rain.REDRCP</RootNamespace>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Title>Driver.Rain.REDRCP</Title>
+    <Version>0.1.0-alpha</Version>
+    <Authors>Aritz Alonso, Ibon Zalbide</Authors>
+    <Company>Kliskatek</Company>
+    <Product>Kliskatek.Driver.Rain</Product>
+    <Description>This library provides .NET methods to interface with the REDRCP protocol</Description>
+    <Copyright>Copyright © 2024 Kliskatek</Copyright>
+    <PackageProjectUrl>www.kliskatek.com</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/kliskatek/driver-rain-net-redrcp</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Serilog" Version="4.0.2" />
+    <PackageReference Include="System.IO.Ports" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>

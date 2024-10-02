@@ -1,8 +1,4 @@
-﻿// See https://aka.ms/new-console-template for more information
-
-//using Kliskatek.REDRCP;
-
-namespace Kliskatek.REDRCP
+﻿namespace Kliskatek.Driver.Rain.REDRCP.Demo
 {
     internal class Program
     {
@@ -29,7 +25,7 @@ namespace Kliskatek.REDRCP
                 Thread.Sleep(2000);
             }
 
-            if(!reader.Disconnect())
+            if (!reader.Disconnect())
                 Console.WriteLine("Serial port not disconnected");
         }
 

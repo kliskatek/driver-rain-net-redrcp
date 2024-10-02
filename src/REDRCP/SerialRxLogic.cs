@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.IO.Ports;
 
-namespace Kliskatek.REDRCP
+namespace Kliskatek.Driver.Rain.REDRCP
 {
     public partial class REDRCP
     {
@@ -10,7 +10,7 @@ namespace Kliskatek.REDRCP
 
         private void ClearReceivedCommandAnswerBuffer()
         {
-            while(_receivedCommandAnswerBuffer.TryTake(out _)) { }
+            while (_receivedCommandAnswerBuffer.TryTake(out _)) { }
         }
 
         private void OnSerialPortDataReceived(object s, SerialDataReceivedEventArgs e)

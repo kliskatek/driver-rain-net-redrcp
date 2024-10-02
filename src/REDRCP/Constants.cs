@@ -1,6 +1,6 @@
-﻿namespace Kliskatek.REDRCP
+﻿namespace Kliskatek.Driver.Rain.REDRCP
 {
-    internal class Constants
+    internal static class Constants
     {
         public const byte Preamble = 0xBB;
         public const byte EndMark = 0x7E;

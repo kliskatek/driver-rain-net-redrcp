@@ -5,10 +5,12 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AssemblyName>Kliskatek.Driver.Rain.REDRCP.Demo</AssemblyName>
+    <RootNamespace>Kliskatek.Driver.Rain.REDRCP.Demo</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\REDRCP\REDRCP.csproj" />
+    <ProjectReference Include="..\..\src\REDRCP\REDRCP.csproj" />
   </ItemGroup>
 
 </Project>

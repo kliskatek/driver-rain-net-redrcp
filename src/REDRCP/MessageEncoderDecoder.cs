@@ -1,4 +1,4 @@
-﻿namespace Kliskatek.REDRCP
+﻿namespace Kliskatek.Driver.Rain.REDRCP
 {
     public partial class REDRCP
     {
