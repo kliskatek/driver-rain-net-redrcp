@@ -71,7 +71,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
         public bool GetReaderFirmwareVersion(out string firmwareVersion)
         {
             firmwareVersion = "";
-            var fwVersion = ProcessCommand(MessageCode.GetReaderInformation, [(byte)ReaderInfoType.FwVersion]);
+            var fwVersion = ProcessRcpCommand(MessageCode.GetReaderInformation, [(byte)ReaderInfoType.FwVersion]);
             if (fwVersion is null)
                 return false;
             var fwVersionText = System.Text.Encoding.ASCII.GetString(fwVersion.ToArray());
@@ -85,7 +85,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
             {
                 _autoRead2NotificationCallback = callback;
                 Interlocked.Exchange(ref _autoRead2Ongoing, 1);
-                var result = ProcessCommand(MessageCode.StartAutoRead2);
+                var result = ProcessRcpCommand(MessageCode.StartAutoRead2);
                 if ((result is not null) && (result.Count == 1) && (result[0] == 0x00))
                     return true;
                 Interlocked.Exchange(ref _autoRead2Ongoing, 0);
@@ -104,7 +104,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
         {
             try
             {
-                var result = ProcessCommand(MessageCode.StopAutoRead2);
+                var result = ProcessRcpCommand(MessageCode.StopAutoRead2);
                 if ((result is not null) && (result.Count == 1) && (result[0] == 0x00))
                 {
                     Interlocked.Exchange(ref _autoRead2Ongoing, 0);
@@ -121,7 +121,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
         }
         #endregion
 
-        private List<byte>? ProcessCommand(MessageCode messageCode, List<byte>? commandPayload = null)
+        private List<byte>? ProcessRcpCommand(MessageCode messageCode, List<byte>? commandPayload = null)
         {
             var command = AssembleRcpCommand(messageCode, commandPayload);
             _communicationBus.TxByteList(command);
