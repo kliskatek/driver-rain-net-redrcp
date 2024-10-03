@@ -1,5 +1,4 @@
 ﻿using System.Collections.Concurrent;
-using System.IO.Ports;
 
 namespace Kliskatek.Driver.Rain.REDRCP
 {
@@ -13,30 +12,25 @@ namespace Kliskatek.Driver.Rain.REDRCP
             while (_receivedCommandAnswerBuffer.TryTake(out _)) { }
         }
 
-        private void OnSerialPortDataReceived(object s, SerialDataReceivedEventArgs e)
+        private void OnCommunicationBusByteReceived(byte rxByte)
         {
             lock (_lockRxData)
             {
-                byte[] data = new byte[_serialPort.BytesToRead];
-                _serialPort.Read(data, 0, data.Length);
-                for (int i = 0; i < data.Length; i++)
+                if (!TryDecodeRxByte(rxByte))
+                    return;
+                if (!Enum.IsDefined(typeof(MessageType), (int)_rcpMessageType))
+                    return;
+                switch ((MessageType)_rcpMessageType)
                 {
-                    if (!TryDecodeRxByte(data[i]))
-                        continue;
-                    if (!Enum.IsDefined(typeof(MessageType), (int)_rcpMessageType))
-                        continue;
-                    switch ((MessageType)_rcpMessageType)
-                    {
-                        case MessageType.Response:
-                            _rcpPayloadBuffer.Insert(0, _rcpCode);
-                            _receivedCommandAnswerBuffer.Add(_rcpPayloadBuffer);
-                            break;
-                        case MessageType.Notification:
-                            ProcessRxNotificationMessage();
-                            break;
-                        default:
-                            break;
-                    }
+                    case MessageType.Response:
+                        _rcpPayloadBuffer.Insert(0, _rcpCode);
+                        _receivedCommandAnswerBuffer.Add(_rcpPayloadBuffer);
+                        break;
+                    case MessageType.Notification:
+                        ProcessRxNotificationMessage();
+                        break;
+                    default:
+                        break;
                 }
             }
         }

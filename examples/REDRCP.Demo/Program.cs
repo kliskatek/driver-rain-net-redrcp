@@ -1,15 +1,32 @@
-﻿namespace Kliskatek.Driver.Rain.REDRCP.Demo
+﻿using System.Text.Json.Serialization;
+using Kliskatek.Driver.Rain.REDRCP.CommunicationBuses;
+using Newtonsoft.Json;
+
+namespace Kliskatek.Driver.Rain.REDRCP.Demo
 {
     internal class Program
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello, World!");
+            Console.WriteLine("REDRCP ");
 
             var reader = new REDRCP();
 
-            if (!reader.Connect("COM4"))
+            //SerialPortConnectionParameters parameters = new SerialPortConnectionParameters
+            //{
+            //    PortName = "COM4"
+            //};
+
+            var connectionString = JsonConvert.SerializeObject(new SerialPortConnectionParameters
+            {
+                PortName = "COM4"
+            });
+
+            if (!reader.Connect(connectionString))
                 return;
+
+            //if (!reader.Connect("COM4"))
+            //    return;
 
             if (reader.GetReaderFirmwareVersion(out var firmwareVersion))
                 Console.WriteLine($"Firmware version = {firmwareVersion}");

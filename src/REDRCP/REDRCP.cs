@@ -1,5 +1,5 @@
 ﻿using Serilog;
-using System.IO.Ports;
+using Kliskatek.Driver.Rain.REDRCP.CommunicationBuses;
 
 namespace Kliskatek.Driver.Rain.REDRCP
 {
@@ -8,36 +8,35 @@ namespace Kliskatek.Driver.Rain.REDRCP
     /// </summary>
     public partial class REDRCP
     {
-        private SerialPort _serialPort = new();
+        //private SerialPort _serialPort = new();
         private int _autoRead2Ongoing = 0;
 
         private AutoRead2NotificationCallback _autoRead2NotificationCallback;
 
-        public bool Connect(string serialPort)
+        private IBus _communicationBus;
+
+        public bool Connect(string connectionString)
         {
             try
             {
-                _serialPort = new SerialPort();
-                _serialPort.PortName = serialPort;
-                _serialPort.BaudRate = 115200;
-                _serialPort.Parity = Parity.None;
-                _serialPort.DataBits = 8;
-                _serialPort.StopBits = StopBits.One;
-                _serialPort.Handshake = Handshake.None;
-                _serialPort.ReadTimeout = 500;
-                _serialPort.WriteTimeout = 500;
-
-                _serialPort.Open();
+                var busType = GetConnectionStringBusType(connectionString);
+                switch (busType)
+                {
+                    case SupportedBuses.SerialPort:
+                        _communicationBus = (IBus)new SerialPortBus();
+                        break;
+                    default:
+                        throw new ArgumentException($"Bus type {busType} is not supported");
+                }
 
                 ClearReceivedCommandAnswerBuffer();
 
-                if (!_serialPort.IsOpen)
+                if (!_communicationBus.Connect(connectionString, OnCommunicationBusByteReceived))
                 {
-                    Log.Warning($"Could not open serial port {serialPort}");
+                    Log.Warning($"Could not connect to communication bus of type {busType}");
                     return false;
                 }
                 ResetRcpDecodeFsm();
-                _serialPort.DataReceived += OnSerialPortDataReceived;
 
                 return true;
             }
@@ -48,12 +47,19 @@ namespace Kliskatek.Driver.Rain.REDRCP
             }
         }
 
+        private SupportedBuses GetConnectionStringBusType(string connectionString)
+        {
+            // Check if connection string can be parsed into SerialPortConnectionParameters
+            if (connectionString.TryParseJson<SerialPortConnectionParameters>())
+                return SupportedBuses.SerialPort;
+            throw new ArgumentException("Connection string can not be parsed into a known format");
+        }
+
         public bool Disconnect()
         {
             try
             {
-                _serialPort.Close();
-                return !_serialPort.IsOpen;
+                return _communicationBus.Disconnect();
             }
             catch (Exception e)
             {
@@ -117,7 +123,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
         private List<byte>? ProcessCommand(MessageCode messageCode, List<byte>? commandPayload = null)
         {
             var command = AssembleRcpCommand(messageCode, commandPayload);
-            command.WriteToSerialInterface(_serialPort);
+            _communicationBus.TxByteList(command);
             if (!_receivedCommandAnswerBuffer.TryTake(out var returnValue, 500))
                 return null;
             if (returnValue.First() != (byte)messageCode)
