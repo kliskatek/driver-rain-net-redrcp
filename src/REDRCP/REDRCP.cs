@@ -8,7 +8,6 @@ namespace Kliskatek.Driver.Rain.REDRCP
     /// </summary>
     public partial class REDRCP
     {
-        //private SerialPort _serialPort = new();
         private int _autoRead2Ongoing = 0;
 
         private AutoRead2NotificationCallback _autoRead2NotificationCallback;
@@ -19,7 +18,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
         {
             try
             {
-                var busType = GetConnectionStringBusType(connectionString);
+                var busType = GetBusTypeFromConnectionString(connectionString);
                 switch (busType)
                 {
                     case SupportedBuses.SerialPort:
@@ -47,7 +46,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
             }
         }
 
-        private SupportedBuses GetConnectionStringBusType(string connectionString)
+        private SupportedBuses GetBusTypeFromConnectionString(string connectionString)
         {
             // Check if connection string can be parsed into SerialPortConnectionParameters
             if (connectionString.TryParseJson<SerialPortConnectionParameters>())
@@ -68,6 +67,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
             }
         }
 
+        #region RCP commands
         public bool GetReaderFirmwareVersion(out string firmwareVersion)
         {
             firmwareVersion = "";
@@ -119,6 +119,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
                 return false;
             }
         }
+        #endregion
 
         private List<byte>? ProcessCommand(MessageCode messageCode, List<byte>? commandPayload = null)
         {

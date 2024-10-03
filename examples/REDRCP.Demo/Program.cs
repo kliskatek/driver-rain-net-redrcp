@@ -12,11 +12,6 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
 
             var reader = new REDRCP();
 
-            //SerialPortConnectionParameters parameters = new SerialPortConnectionParameters
-            //{
-            //    PortName = "COM4"
-            //};
-
             var connectionString = JsonConvert.SerializeObject(new SerialPortConnectionParameters
             {
                 PortName = "COM4"
@@ -24,9 +19,6 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
 
             if (!reader.Connect(connectionString))
                 return;
-
-            //if (!reader.Connect("COM4"))
-            //    return;
 
             if (reader.GetReaderFirmwareVersion(out var firmwareVersion))
                 Console.WriteLine($"Firmware version = {firmwareVersion}");
