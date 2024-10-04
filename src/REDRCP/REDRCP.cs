@@ -72,10 +72,17 @@ namespace Kliskatek.Driver.Rain.REDRCP
         public bool GetReaderInformation(byte commandArgument, out List<byte> responseArguments)
         {
             responseArguments = new List<byte>();
+            if (ProcessRcpCommand(MessageCode.GetReaderInformation, out responseArguments, 
+                    [commandArgument]) != RcpReturnType.Success)
+                return false;
+            return (responseArguments.Count > 0);
+
+            /*
             responseArguments = ProcessRcpCommand(MessageCode.GetReaderInformation, [commandArgument]);
             if (responseArguments is null)
                 return false;
             return (responseArguments.Count > 0);
+            */
         }
 
         public bool GetReaderInformationReaderModel(out string model)
@@ -140,12 +147,24 @@ namespace Kliskatek.Driver.Rain.REDRCP
             try
             {
                 _autoRead2NotificationCallback = callback;
-                Interlocked.Exchange(ref _autoRead2Ongoing, 1);
-                var result = ProcessRcpCommand(MessageCode.StartAutoRead2);
-                if ((result is not null) && (result.Count == 1) && (result[Constants.ResponseArgOffset] == 0x00))
+                // Interlocked.Exchange(ref _autoRead2Ongoing, 1);
+
+                if (ProcessRcpCommand(MessageCode.StartAutoRead2, out var result) != RcpReturnType.Success)
+                    return false;
+
+                if ((result.Count == 1) && (result[Constants.ResponseArgOffset] == Constants.Success))
+                {
+                    Interlocked.Exchange(ref _autoRead2Ongoing, 1);
                     return true;
-                Interlocked.Exchange(ref _autoRead2Ongoing, 0);
+                }
+
                 return false;
+
+                //var result = ProcessRcpCommand(MessageCode.StartAutoRead2);
+                //if ((result is not null) && (result.Count == 1) && (result[Constants.ResponseArgOffset] == 0x00))
+                //    return true;
+                //Interlocked.Exchange(ref _autoRead2Ongoing, 0);
+                //return false;
 
             }
             catch (Exception e)
@@ -160,6 +179,16 @@ namespace Kliskatek.Driver.Rain.REDRCP
         {
             try
             {
+                if (ProcessRcpCommand(MessageCode.StopAutoRead2, out var result) != RcpReturnType.Success)
+                    return false;
+                if ((result.Count == 1) && (result[Constants.ResponseArgOffset] == Constants.Success))
+                {
+                    Interlocked.Exchange(ref _autoRead2Ongoing, 0);
+                    return true;
+                }
+
+                return false;
+                /*
                 var result = ProcessRcpCommand(MessageCode.StopAutoRead2);
                 if ((result is not null) && (result.Count == 1) && (result[Constants.ResponseArgOffset] == 0x00))
                 {
@@ -168,6 +197,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
                 }
 
                 return false;
+                */
             }
             catch (Exception e)
             {
@@ -177,6 +207,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
         }
         #endregion
 
+        /*
         private List<byte>? ProcessRcpCommand(MessageCode messageCode, List<byte>? commandPayload = null)
         {
             var command = AssembleRcpCommand(messageCode, commandPayload);
@@ -190,6 +221,47 @@ namespace Kliskatek.Driver.Rain.REDRCP
             }
             returnValue.RemoveAt(0);
             return returnValue;
+        }
+        */
+
+        private RcpReturnType ProcessRcpCommand(MessageCode messageCode, out List<byte> responsePayload, List<byte> commandPayload = null)
+        {
+            ClearReceivedCommandAnswerBuffer();
+            responsePayload = new List<byte>();
+            var command = AssembleRcpCommand(messageCode, commandPayload);
+            _communicationBus.TxByteList(command);
+            if (!_receivedCommandAnswerBuffer.TryTake(out var commandAnswer, Constants.RcpCommandMaxResponseTimeMs))
+            {
+                Log.Warning($"Command {messageCode} timed out");
+                return RcpReturnType.NoResponse;
+            }
+
+            // Extract command response code and leave commandAnswer as the response payload
+            var commandResponseCode = commandAnswer.First();
+            commandAnswer.RemoveAt(0);
+                
+            if (commandResponseCode == (byte)messageCode)
+            {
+                // Command response
+                responsePayload = commandAnswer;
+                return RcpReturnType.Success;
+            }
+            if (commandResponseCode == ((byte)MessageCode.CommandFailure))
+            {
+                // Command failure
+                Log.Warning($"Command {messageCode} returned an error");
+                if (commandAnswer.Count == 0)
+                    Log.Warning(" * No error details available (payload length == 0)");
+                else
+                {
+                    var errorByte = commandAnswer.First();
+                    Log.Warning($" * Error code : {errorByte} ({(ErrorCode)errorByte})");
+                }
+                responsePayload = commandAnswer;
+                return RcpReturnType.ReaderError;
+            }
+            Log.Warning($"RCP message code error. Expected {(byte)messageCode}, received {commandResponseCode}");
+            return RcpReturnType.OtherError;
         }
     }
 }

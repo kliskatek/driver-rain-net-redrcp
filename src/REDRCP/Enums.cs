@@ -144,11 +144,11 @@
         Detail = 0xB0
     }
 
-    public enum MessageConstants
-    {
-        Preamble = 0xBB,
-        EndMark = 0x7E
-    }
+    //public enum MessageConstants
+    //{
+    //    Preamble = 0xBB,
+    //    EndMark = 0x7E
+    //}
 
     public enum ParamModulation
     {
@@ -333,5 +333,13 @@
         EndMark = 6,
         Crc16H = 7,
         Crc16L = 8
+    }
+
+    public enum RcpReturnType
+    {
+        Success,
+        ReaderError,
+        NoResponse,
+        OtherError
     }
 }
