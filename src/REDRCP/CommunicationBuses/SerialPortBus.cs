@@ -53,7 +53,7 @@ namespace Kliskatek.Driver.Rain.REDRCP.CommunicationBuses
                     _serialPort.DataReceived -= OnSerialPortDataReceived;
                     _isConnected = false;
                 }
-                return _isConnected;
+                return !_isConnected;
             }
             catch (Exception e)
             {

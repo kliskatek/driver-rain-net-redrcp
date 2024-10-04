@@ -20,19 +20,30 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
             if (!reader.Connect(connectionString))
                 return;
 
-            if (reader.GetReaderFirmwareVersion(out var firmwareVersion))
+            if (reader.GetReaderInformationFirmwareVersion(out var firmwareVersion))
                 Console.WriteLine($"Firmware version = {firmwareVersion}");
 
-            for (int i = 0; i < 1; i++)
-            {
-                reader.StartAutoRead2(AutoRead2DelegateMethod);
+            if (reader.GetReaderInformationReaderModel(out var modelName))
+                Console.WriteLine($"Model name = {modelName}");
 
-                Thread.Sleep(2000);
+            if (reader.GetReaderInformationManufacturer(out var manufacturer))
+                Console.WriteLine($"Manufacturer = {manufacturer}");
 
-                reader.StopAutoRead2();
+            if (reader.GetReaderInformationDetails(out var details))
+                Console.WriteLine("KK");
 
-                Thread.Sleep(2000);
-            }
+
+
+            //for (int i = 0; i < 1; i++)
+            //{
+            //    reader.StartAutoRead2(AutoRead2DelegateMethod);
+
+            //    Thread.Sleep(2000);
+
+            //    reader.StopAutoRead2();
+
+            //    Thread.Sleep(2000);
+            //}
 
             if (!reader.Disconnect())
                 Console.WriteLine("Serial port not disconnected");
