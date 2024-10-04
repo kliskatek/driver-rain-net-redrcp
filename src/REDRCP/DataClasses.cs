@@ -33,4 +33,15 @@
         public byte ChannelNumber;
         public byte ChannelNumberOffset;
     }
+
+    public class FhLbtParameters
+    {
+        public ushort DwellTime;
+        public ushort IdleTime;
+        public ushort CarrierSenseTime;
+        public double TargetRfPowerLevel;
+        public bool Fh;
+        public bool Lbt;
+        public bool Cw;
+    }
 }

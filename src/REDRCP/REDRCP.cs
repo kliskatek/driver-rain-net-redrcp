@@ -179,9 +179,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
             if (ProcessRcpCommand(MessageCode.SetRegion, out var responseArguments, [(byte)region]) !=
                 RcpReturnType.Success)
                 return false;
-            if (responseArguments.Count != 1)
-                return false;
-            return (responseArguments[Constants.ResponseArgOffset] == Constants.Success);
+            return ParseSingleByteResponsePayload(responseArguments);
         }
         #endregion
 
@@ -189,11 +187,9 @@ namespace Kliskatek.Driver.Rain.REDRCP
 
         public bool SetSystemReset()
         {
-            if (ProcessRcpCommand(MessageCode.SetSystemReset, out var resultArguments) != RcpReturnType.Success)
+            if (ProcessRcpCommand(MessageCode.SetSystemReset, out var responseArguments) != RcpReturnType.Success)
                 return false;
-            if (resultArguments.Count != 1)
-                return false;
-            return (resultArguments[Constants.ResponseArgOffset] != Constants.Success);
+            return ParseSingleByteResponsePayload(responseArguments);
         }
 
         #endregion
@@ -203,14 +199,14 @@ namespace Kliskatek.Driver.Rain.REDRCP
         public bool GetTypeCaiQueryParameters(out TypeCaiQueryParameters parameters)
         {
             parameters = new TypeCaiQueryParameters();
-            if (ProcessRcpCommand(MessageCode.GetTypeQueryRelatedParameters, out var resultArguments) !=
+            if (ProcessRcpCommand(MessageCode.GetTypeQueryRelatedParameters, out var responseArguments) !=
                 RcpReturnType.Success)
                 return false;
-            if (resultArguments.Count != 2)
+            if (responseArguments.Count != 2)
                 return false;
 
             // Decode parameters in MSB
-            var resultByte = resultArguments.First();
+            var resultByte = responseArguments.First();
 
             parameters.Session = (ParamSession)(resultByte & 0x03);
             resultByte = (byte)(resultByte >> 2);
@@ -223,7 +219,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
             parameters.Dr = (ParamDr)resultByte;
 
             // Decode parameters in LSB
-            resultByte = resultArguments.Last();
+            resultByte = responseArguments.Last();
             parameters.Toggle = (ParamToggle)(resultByte & 0x07);
             resultByte = (byte)(resultByte >> 3);
             parameters.Q = (uint)(resultByte & 0x0F);
@@ -262,12 +258,10 @@ namespace Kliskatek.Driver.Rain.REDRCP
             lsb += (byte)parameters.Toggle;
             arguments.Add(lsb);
 
-            if (ProcessRcpCommand(MessageCode.SetTypeQueryRelatedParameters, out var resultArguments, arguments) !=
+            if (ProcessRcpCommand(MessageCode.SetTypeQueryRelatedParameters, out var responseArguments, arguments) !=
                 RcpReturnType.Success)
                 return false;
-            if (resultArguments.Count != 1)
-                return false;
-            return (resultArguments[Constants.ResponseArgOffset] != Constants.Success);
+            return ParseSingleByteResponsePayload(responseArguments);
         }
 
         #endregion
@@ -277,12 +271,12 @@ namespace Kliskatek.Driver.Rain.REDRCP
         public bool GetRfChannel(out RfChannel channel)
         {
             channel = new RfChannel();
-            if (ProcessRcpCommand(MessageCode.GetRfChannel, out var resultArguments) != RcpReturnType.Success)
+            if (ProcessRcpCommand(MessageCode.GetRfChannel, out var responseArguments) != RcpReturnType.Success)
                 return false;
-            if (resultArguments.Count != 2)
+            if (responseArguments.Count != 2)
                 return false;
-            channel.ChannelNumber = resultArguments[0];
-            channel.ChannelNumberOffset = resultArguments[1];
+            channel.ChannelNumber = responseArguments[0];
+            channel.ChannelNumberOffset = responseArguments[1];
             return true;
         }
 
@@ -295,12 +289,50 @@ namespace Kliskatek.Driver.Rain.REDRCP
             var arguments = new List<Byte>();
             arguments.Add(channel.ChannelNumber);
             arguments.Add(channel.ChannelNumberOffset);
-            if (ProcessRcpCommand(MessageCode.SetRfChannel, out var resultArguments, arguments) !=
+            if (ProcessRcpCommand(MessageCode.SetRfChannel, out var responseArguments, arguments) !=
                 RcpReturnType.Success)
                 return false;
-            if (resultArguments.Count != 1)
+            return ParseSingleByteResponsePayload(responseArguments);
+        }
+
+        #endregion
+
+        #region 4.10 Get FH and LBT Parameters
+
+        public bool GetFhLbtParameters(out FhLbtParameters parameters)
+        {
+            parameters = new FhLbtParameters();
+            if (ProcessRcpCommand(MessageCode.GetFhLbtParameters, out var responseArguments) != RcpReturnType.Success)
                 return false;
-            return (resultArguments[Constants.ResponseArgOffset] != Constants.Success);
+            if (responseArguments.Count != 11)
+                return false;
+            var responseArgumentsArray = responseArguments.ToArray();
+            parameters.DwellTime =
+                BinaryPrimitives.ReadUInt16BigEndian(GetArraySlice(responseArgumentsArray, Constants.FlpDtOffset,
+                    sizeof(UInt16)));
+            parameters.IdleTime =
+                BinaryPrimitives.ReadUInt16BigEndian(GetArraySlice(responseArgumentsArray, Constants.FlpItOffset,
+                    sizeof(UInt16)));
+            parameters.CarrierSenseTime =
+                BinaryPrimitives.ReadUInt16BigEndian(GetArraySlice(responseArgumentsArray, Constants.FlpCstOffset,
+                    sizeof(UInt16)));
+            parameters.TargetRfPowerLevel =
+                (double)(BinaryPrimitives.ReadInt16BigEndian(GetArraySlice(responseArgumentsArray,
+                    Constants.FlpRflOffset, sizeof(Int16)))) / 10.0;
+            parameters.Fh = (responseArgumentsArray[Constants.FlpFhOffset] > 0);
+            parameters.Lbt = (responseArgumentsArray[Constants.FlpLbtOffset] > 0);
+            parameters.Cw = (responseArgumentsArray[Constants.FlpCwOffset] > 0);
+            return true;
+        }
+
+        #endregion
+
+        #region 4.11 Set FH and LBT Parameters
+
+
+        public bool SetFhLbtParameters(FhLbtParameters parameters)
+        {
+            throw new NotImplementedException();
         }
 
         #endregion
@@ -391,9 +423,16 @@ namespace Kliskatek.Driver.Rain.REDRCP
             return (new ArraySegment<T>(inputArray)).Slice(startIndex, elementCount).ToArray();
         }
 
-        public T[] GetArraySlice<T>(T[] inputArray, int startIndex)
+        private T[] GetArraySlice<T>(T[] inputArray, int startIndex)
         {
             return (new ArraySegment<T>(inputArray)).Slice(startIndex, inputArray.Length - startIndex).ToArray();
+        }
+
+        private bool ParseSingleByteResponsePayload(List<byte> responsePayload)
+        {
+            if (responsePayload.Count != 1)
+                return false;
+            return (responsePayload[Constants.ResponseArgOffset] == Constants.Success);
         }
     }
 }
