@@ -21,8 +21,8 @@
         SetSelectionFilter = 0xAF,
         GetTypeQueryRelatedParameters = 0x0D,
         SetTypeQueryRelatedParameters = 0x0E,
-        GetCurrentRfChannel = 0x11,
-        SetCurrentRfChannel = 0x12,
+        GetRfChannel = 0x11,
+        SetRfChannel = 0x12,
         GetFhLbtParameters = 0x13,
         SetFhLbtParameters = 0x14,
         GetTxPower = 0x15,
@@ -193,6 +193,13 @@
         S2 = 2,
         S3 = 3,
         Sl = 4
+    }
+
+    public enum ParamToggle
+    {
+        Disable = 0x000,
+        EveryInventoryRound = 0x001,
+        EveryDwellTIme = 0x010
     }
 
     public enum ParamSelectAction

@@ -1,4 +1,6 @@
-﻿using Serilog;
+﻿using System.Buffers.Binary;
+using System.Diagnostics;
+using Serilog;
 using Kliskatek.Driver.Rain.REDRCP.CommunicationBuses;
 
 namespace Kliskatek.Driver.Rain.REDRCP
@@ -76,13 +78,6 @@ namespace Kliskatek.Driver.Rain.REDRCP
                     [commandArgument]) != RcpReturnType.Success)
                 return false;
             return (responseArguments.Count > 0);
-
-            /*
-            responseArguments = ProcessRcpCommand(MessageCode.GetReaderInformation, [commandArgument]);
-            if (responseArguments is null)
-                return false;
-            return (responseArguments.Count > 0);
-            */
         }
 
         public bool GetReaderInformationReaderModel(out string model)
@@ -100,12 +95,6 @@ namespace Kliskatek.Driver.Rain.REDRCP
         public bool GetReaderInformationFirmwareVersion(out string firmwareVersion)
         {
             firmwareVersion = string.Empty;
-            //var fwVersion = ProcessRcpCommand(MessageCode.GetReaderInformation, [(byte)ReaderInfoType.FwVersion]);
-            //if (fwVersion is null)
-            //    return false;
-            //var fwVersionText = System.Text.Encoding.ASCII.GetString(fwVersion.ToArray());
-            //firmwareVersion = fwVersionText.Replace("\0", string.Empty);
-            //return true;
             if (!GetReaderInformation((byte)ReaderInfoType.FwVersion, out var firmwareBinary))
                 return false;
             if (firmwareBinary.Count == 0)
@@ -126,19 +115,195 @@ namespace Kliskatek.Driver.Rain.REDRCP
             return true;
         }
 
-        public bool GetReaderInformationDetails(out List<byte> returnValue)
+        public bool GetReaderInformationDetails(out ReaderInformationDetails details)
         {
-            returnValue = new List<byte>();
+            details = new ReaderInformationDetails();
             if (!GetReaderInformation((byte)ReaderInfoType.Detail, out var detailBinary))
                 return false;
             if (detailBinary.Count < Constants.ReaderInformationDetailBinaryLength)
                 return false;
+            var detailBinaryArray = detailBinary.ToArray();
+            // Parse details
+            details.Region = (Region)detailBinaryArray[Constants.RidRegionOffset];
+            details.Channel = detailBinaryArray[Constants.RidChannelOffset];
+            details.MergeTime =
+                BinaryPrimitives.ReadUInt16BigEndian(GetArraySlice(detailBinaryArray, Constants.RidMergeTimeOffset,
+                    sizeof(UInt16)));
+            details.IdleTime =
+                BinaryPrimitives.ReadUInt16BigEndian(GetArraySlice(detailBinaryArray, Constants.RidIdleTimeOffset,
+                    sizeof(UInt16)));
+            details.CwSenseTime =
+                BinaryPrimitives.ReadUInt16BigEndian(GetArraySlice(detailBinaryArray, Constants.RidCwSenseTimeOffset,
+                    sizeof(UInt16)));
+            details.LbtRfLevel =
+                (double)(BinaryPrimitives.ReadInt16BigEndian(GetArraySlice(detailBinaryArray,
+                    Constants.RidLbtRfLevelOffset, sizeof(Int16)))) / 10.0;
+            details.CurrentTxPower =
+                (double)(BinaryPrimitives.ReadInt16BigEndian(GetArraySlice(detailBinaryArray,
+                    Constants.RidCurrentTxPowerOffset, sizeof(Int16)))) / 10.0;
+            details.MinTxPower =
+                (double)(BinaryPrimitives.ReadInt16BigEndian(GetArraySlice(detailBinaryArray,
+                    Constants.RidMinTxPowerOffset, sizeof(Int16)))) / 10.0;
+            details.MaxTxPower =
+                (double)(BinaryPrimitives.ReadInt16BigEndian(GetArraySlice(detailBinaryArray,
+                    Constants.RidMaxTxPowerOffset, sizeof(Int16)))) / 10.0;
+            details.Blf =
+                BinaryPrimitives.ReadUInt16BigEndian(GetArraySlice(detailBinaryArray, Constants.RidBlfOffset,
+                    sizeof(UInt16)));
+            details.Modulation = (ParamModulation)detailBinaryArray[Constants.RidModulationOffset];
+            details.Dr = (ParamDr)detailBinaryArray[Constants.RidDrOffset];
+
+            return true;
+        }
+        #endregion
+
+        #region 4.3 Get Region
+
+        public bool GetRegion(out Region region)
+        {
+            region = Region.Europe;
+            if (ProcessRcpCommand(MessageCode.GetRegion, out var responseArguments) != RcpReturnType.Success)
+                return false;
+            if (responseArguments.Count != 1)
+                return false;
+            region = (Region)responseArguments[Constants.ResponseArgOffset];
             return true;
         }
 
+        #endregion
+
+        #region 4.4 Set Region
+
+        public bool SetRegion(Region region)
+        {
+            if (ProcessRcpCommand(MessageCode.SetRegion, out var responseArguments, [(byte)region]) !=
+                RcpReturnType.Success)
+                return false;
+            if (responseArguments.Count != 1)
+                return false;
+            return (responseArguments[Constants.ResponseArgOffset] == Constants.Success);
+        }
+        #endregion
+
+        #region 4.5 Set System Reset
+
+        public bool SetSystemReset()
+        {
+            if (ProcessRcpCommand(MessageCode.SetSystemReset, out var resultArguments) != RcpReturnType.Success)
+                return false;
+            if (resultArguments.Count != 1)
+                return false;
+            return (resultArguments[Constants.ResponseArgOffset] != Constants.Success);
+        }
 
         #endregion
 
+        #region 4.6 Get Type C A/I Query Parameters
+
+        public bool GetTypeCaiQueryParameters(out TypeCaiQueryParameters parameters)
+        {
+            parameters = new TypeCaiQueryParameters();
+            if (ProcessRcpCommand(MessageCode.GetTypeQueryRelatedParameters, out var resultArguments) !=
+                RcpReturnType.Success)
+                return false;
+            if (resultArguments.Count != 2)
+                return false;
+
+            // Decode parameters in MSB
+            var resultByte = resultArguments.First();
+
+            parameters.Session = (ParamSession)(resultByte & 0x03);
+            resultByte = (byte)(resultByte >> 2);
+            parameters.Sel = (ParamSel)(resultByte & 0x03);
+            resultByte = (byte)(resultByte >> 2);
+            parameters.TRext = (resultByte & 0x01) > 0;
+            resultByte = (byte)(resultByte >> 1);
+            parameters.Modulation = (ParamModulation)(resultByte & 0x03);
+            resultByte = (byte)(resultByte >> 2);
+            parameters.Dr = (ParamDr)resultByte;
+
+            // Decode parameters in LSB
+            resultByte = resultArguments.Last();
+            parameters.Toggle = (ParamToggle)(resultByte & 0x07);
+            resultByte = (byte)(resultByte >> 3);
+            parameters.Q = (uint)(resultByte & 0x0F);
+            resultByte = (byte)(resultByte >> 4);
+            parameters.Target = (ParamTarget)(resultByte & 0x01);
+
+            return true;
+        }
+
+        #endregion
+
+        #region 4.7 Set Type C A/I Query Parameters
+
+        public bool SetTypeCaiQueryParameters(TypeCaiQueryParameters parameters)
+        {
+            var arguments = new List<byte>();
+
+            // Encode first byte
+            byte msb = 0;
+            msb += (byte)parameters.Dr;
+            msb = (byte)(msb << 2);
+            msb += (byte)parameters.Modulation;
+            msb = (byte)(msb << 1);
+            msb += (byte)(parameters.TRext ? 1 : 0);
+            msb = (byte)(msb << 2);
+            msb += (byte)parameters.Sel;
+            msb = (byte)(msb << 2);
+            msb += (byte)parameters.Session;
+            arguments.Add(msb);
+            // Encode second byte
+            byte lsb = 0;
+            lsb += (byte)(parameters.Target);
+            lsb = (byte)(lsb << 4);
+            lsb += (byte)((((byte)parameters.Q) & 0x0F));
+            lsb = (byte)(lsb << 3);
+            lsb += (byte)parameters.Toggle;
+            arguments.Add(lsb);
+
+            if (ProcessRcpCommand(MessageCode.SetTypeQueryRelatedParameters, out var resultArguments, arguments) !=
+                RcpReturnType.Success)
+                return false;
+            if (resultArguments.Count != 1)
+                return false;
+            return (resultArguments[Constants.ResponseArgOffset] != Constants.Success);
+        }
+
+        #endregion
+
+        #region 4.8 Get RF Channel
+
+        public bool GetRfChannel(out RfChannel channel)
+        {
+            channel = new RfChannel();
+            if (ProcessRcpCommand(MessageCode.GetRfChannel, out var resultArguments) != RcpReturnType.Success)
+                return false;
+            if (resultArguments.Count != 2)
+                return false;
+            channel.ChannelNumber = resultArguments[0];
+            channel.ChannelNumberOffset = resultArguments[1];
+            return true;
+        }
+
+        #endregion
+
+        #region 4.9 Set RF Channel
+
+        public bool SetRfChannel(RfChannel channel)
+        {
+            var arguments = new List<Byte>();
+            arguments.Add(channel.ChannelNumber);
+            arguments.Add(channel.ChannelNumberOffset);
+            if (ProcessRcpCommand(MessageCode.SetRfChannel, out var resultArguments, arguments) !=
+                RcpReturnType.Success)
+                return false;
+            if (resultArguments.Count != 1)
+                return false;
+            return (resultArguments[Constants.ResponseArgOffset] != Constants.Success);
+        }
+
+        #endregion
 
 
 
@@ -147,25 +312,12 @@ namespace Kliskatek.Driver.Rain.REDRCP
             try
             {
                 _autoRead2NotificationCallback = callback;
-                // Interlocked.Exchange(ref _autoRead2Ongoing, 1);
-
                 if (ProcessRcpCommand(MessageCode.StartAutoRead2, out var result) != RcpReturnType.Success)
                     return false;
-
-                if ((result.Count == 1) && (result[Constants.ResponseArgOffset] == Constants.Success))
-                {
-                    Interlocked.Exchange(ref _autoRead2Ongoing, 1);
-                    return true;
-                }
-
-                return false;
-
-                //var result = ProcessRcpCommand(MessageCode.StartAutoRead2);
-                //if ((result is not null) && (result.Count == 1) && (result[Constants.ResponseArgOffset] == 0x00))
-                //    return true;
-                //Interlocked.Exchange(ref _autoRead2Ongoing, 0);
-                //return false;
-
+                if (!((result.Count == 1) && (result[Constants.ResponseArgOffset] == Constants.Success)))
+                    return false;
+                Interlocked.Exchange(ref _autoRead2Ongoing, 1);
+                return true;
             }
             catch (Exception e)
             {
@@ -181,23 +333,10 @@ namespace Kliskatek.Driver.Rain.REDRCP
             {
                 if (ProcessRcpCommand(MessageCode.StopAutoRead2, out var result) != RcpReturnType.Success)
                     return false;
-                if ((result.Count == 1) && (result[Constants.ResponseArgOffset] == Constants.Success))
-                {
-                    Interlocked.Exchange(ref _autoRead2Ongoing, 0);
-                    return true;
-                }
-
-                return false;
-                /*
-                var result = ProcessRcpCommand(MessageCode.StopAutoRead2);
-                if ((result is not null) && (result.Count == 1) && (result[Constants.ResponseArgOffset] == 0x00))
-                {
-                    Interlocked.Exchange(ref _autoRead2Ongoing, 0);
-                    return true;
-                }
-
-                return false;
-                */
+                if (!((result.Count == 1) && (result[Constants.ResponseArgOffset] == Constants.Success)))
+                    return false;
+                Interlocked.Exchange(ref _autoRead2Ongoing, 0);
+                return true;
             }
             catch (Exception e)
             {
@@ -206,23 +345,6 @@ namespace Kliskatek.Driver.Rain.REDRCP
             }
         }
         #endregion
-
-        /*
-        private List<byte>? ProcessRcpCommand(MessageCode messageCode, List<byte>? commandPayload = null)
-        {
-            var command = AssembleRcpCommand(messageCode, commandPayload);
-            _communicationBus.TxByteList(command);
-            if (!_receivedCommandAnswerBuffer.TryTake(out var returnValue, 500))
-                return null;
-            if (returnValue.First() != (byte)messageCode)
-            {
-                ClearReceivedCommandAnswerBuffer();
-                return null;
-            }
-            returnValue.RemoveAt(0);
-            return returnValue;
-        }
-        */
 
         private RcpReturnType ProcessRcpCommand(MessageCode messageCode, out List<byte> responsePayload, List<byte> commandPayload = null)
         {
@@ -262,6 +384,16 @@ namespace Kliskatek.Driver.Rain.REDRCP
             }
             Log.Warning($"RCP message code error. Expected {(byte)messageCode}, received {commandResponseCode}");
             return RcpReturnType.OtherError;
+        }
+
+        private T[] GetArraySlice<T>(T[] inputArray, int startIndex, int elementCount)
+        {
+            return (new ArraySegment<T>(inputArray)).Slice(startIndex, elementCount).ToArray();
+        }
+
+        public T[] GetArraySlice<T>(T[] inputArray, int startIndex)
+        {
+            return (new ArraySegment<T>(inputArray)).Slice(startIndex, inputArray.Length - startIndex).ToArray();
         }
     }
 }

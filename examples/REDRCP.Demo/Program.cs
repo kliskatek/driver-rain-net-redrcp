@@ -30,7 +30,16 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
                 Console.WriteLine($"Manufacturer = {manufacturer}");
 
             if (reader.GetReaderInformationDetails(out var details))
-                Console.WriteLine("KK");
+                Console.WriteLine("Reader details obtained");
+
+            if (reader.GetRegion(out var region))
+                Console.WriteLine($"Reader region : {region}");
+
+            if (reader.GetTypeCaiQueryParameters(out var queryParameters))
+                Console.WriteLine("Query parameters obtained");
+
+            if (reader.GetRfChannel(out var rfChannel))
+                Console.WriteLine($"CN = {rfChannel.ChannelNumber}, CNO = {rfChannel.ChannelNumberOffset}");
 
 
 
