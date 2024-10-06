@@ -1,7 +1,7 @@
 ﻿using System.Buffers.Binary;
 using System.Diagnostics;
+using Kliskatek.Driver.Rain.REDRCP.Transports;
 using Serilog;
-using Kliskatek.Driver.Rain.REDRCP.CommunicationBuses;
 
 namespace Kliskatek.Driver.Rain.REDRCP
 {
@@ -12,7 +12,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
     {
         private int _autoRead2Ongoing = 0;
         private AutoRead2NotificationCallback _autoRead2NotificationCallback;
-        private IBus _communicationBus;
+        private ITransport _communicationTransport;
 
         public bool Connect(string connectionString)
         {
@@ -22,7 +22,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
                 switch (busType)
                 {
                     case SupportedBuses.SerialPort:
-                        _communicationBus = (IBus)new SerialPortBus();
+                        _communicationTransport = (ITransport)new SerialPortTransport();
                         break;
                     default:
                         throw new ArgumentException($"Bus type {busType} is not supported");
@@ -30,7 +30,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
 
                 ClearReceivedCommandAnswerBuffer();
 
-                if (!_communicationBus.Connect(connectionString, OnCommunicationBusByteReceived))
+                if (!_communicationTransport.Connect(connectionString, OnCommunicationBusByteReceived))
                 {
                     Log.Warning($"Could not connect to communication bus of type {busType}");
                     return false;
@@ -58,7 +58,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
         {
             try
             {
-                return _communicationBus.Disconnect();
+                return _communicationTransport.Disconnect();
             }
             catch (Exception e)
             {
@@ -383,7 +383,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
             ClearReceivedCommandAnswerBuffer();
             responsePayload = new List<byte>();
             var command = AssembleRcpCommand(messageCode, commandPayload);
-            _communicationBus.TxByteList(command);
+            _communicationTransport.TxByteList(command);
             if (!_receivedCommandAnswerBuffer.TryTake(out var commandAnswer, Constants.RcpCommandMaxResponseTimeMs))
             {
                 Log.Warning($"Command {messageCode} timed out");

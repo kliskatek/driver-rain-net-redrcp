@@ -1,5 +1,5 @@
 ﻿using System.Text.Json.Serialization;
-using Kliskatek.Driver.Rain.REDRCP.CommunicationBuses;
+using Kliskatek.Driver.Rain.REDRCP.Transports;
 using Newtonsoft.Json;
 
 namespace Kliskatek.Driver.Rain.REDRCP.Demo

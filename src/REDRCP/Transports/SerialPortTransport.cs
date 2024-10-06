@@ -2,9 +2,9 @@
 using Newtonsoft.Json;
 using Serilog;
 
-namespace Kliskatek.Driver.Rain.REDRCP.CommunicationBuses
+namespace Kliskatek.Driver.Rain.REDRCP.Transports
 {
-    public class SerialPortBus : IBus
+    public class SerialPortTransport : ITransport
     {
         private SerialPort _serialPort = new();
         private RxByteCallback? _rxByteCallback;

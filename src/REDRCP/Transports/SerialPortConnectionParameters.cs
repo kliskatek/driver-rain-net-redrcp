@@ -1,6 +1,6 @@
 ﻿using System.IO.Ports;
 
-namespace Kliskatek.Driver.Rain.REDRCP.CommunicationBuses
+namespace Kliskatek.Driver.Rain.REDRCP.Transports
 {
     public class SerialPortConnectionParameters
     {
