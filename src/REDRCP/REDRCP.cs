@@ -332,7 +332,26 @@ namespace Kliskatek.Driver.Rain.REDRCP
 
         public bool SetFhLbtParameters(FhLbtParameters parameters)
         {
-            throw new NotImplementedException();
+            var dt = BitConverter.GetBytes(parameters.DwellTime).Reverse();
+            var it = BitConverter.GetBytes(parameters.IdleTime).Reverse();
+            var cst = BitConverter.GetBytes(parameters.CarrierSenseTime).Reverse();
+            var rfl = BitConverter.GetBytes((short)(parameters.TargetRfPowerLevel * 10.0)).Reverse();
+            var fh = parameters.Fh ? (byte)1 : (byte)0;
+            var lbt = parameters.Lbt ? (byte)1 : (byte)0;
+            var cwt = parameters.Cw ? (byte)1 : (byte)0;
+
+            var payloadArguments = new List<byte>(dt);
+            payloadArguments.AddRange(it);
+            payloadArguments.AddRange(cst);
+            payloadArguments.AddRange(rfl);
+            payloadArguments.Add(fh);
+            payloadArguments.Add(lbt);
+            payloadArguments.Add(cwt);
+
+            if (ProcessRcpCommand(MessageCode.SetFhLbtParameters, out var responseArguments, payloadArguments) !=
+                RcpReturnType.Success)
+                return false;
+            return ParseSingleByteResponsePayload(responseArguments);
         }
 
         #endregion

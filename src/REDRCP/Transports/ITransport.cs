@@ -1,6 +1,6 @@
 ﻿namespace Kliskatek.Driver.Rain.REDRCP.Transports
 {
-    public interface IBus
+    public interface ITransport
     {
         bool Connect(string connectionString, RxByteCallback rxByteCallback);
 

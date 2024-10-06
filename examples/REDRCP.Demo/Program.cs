@@ -12,6 +12,8 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
 
             var reader = new REDRCP();
 
+
+
             var connectionString = JsonConvert.SerializeObject(new SerialPortConnectionParameters
             {
                 PortName = "COM4"
@@ -43,6 +45,18 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
 
             if (reader.GetFhLbtParameters(out var fhLbtParameters))
                 Console.WriteLine("FH and LBT parameters obtained");
+
+            //FhLbtParameters tmp = new FhLbtParameters
+            //{
+            //    DwellTime = 400,
+            //    IdleTime = 100,
+            //    CarrierSenseTime = 10,
+            //    TargetRfPowerLevel = -74,
+            //    Fh = true,
+            //    Lbt = true,
+            //    Cw = false
+            //};
+            //reader.SetFhLbtParameters(tmp);
 
 
             //for (int i = 0; i < 1; i++)
