@@ -1,6 +1,7 @@
 ﻿using System.Buffers.Binary;
 using System.Diagnostics;
 using Kliskatek.Driver.Rain.REDRCP.Transports;
+using Newtonsoft.Json.Converters;
 using Serilog;
 
 namespace Kliskatek.Driver.Rain.REDRCP
@@ -10,8 +11,13 @@ namespace Kliskatek.Driver.Rain.REDRCP
     /// </summary>
     public partial class REDRCP
     {
-        private int _autoRead2Ongoing = 0;
         private AutoRead2NotificationCallback _autoRead2NotificationCallback;
+        private int _autoRead2Ongoing = 0;
+        private ReadTypeCUiiNotificationCallback _readTypeCUiiNotificationCallback;
+        private int _readTypeCUiiOngoing = 0;
+        private ReadTypeCUiiTidNotificationCallback _readTypeCUiiTidNotificationCallback;
+        private int _readTypeCUiiTidOngoing = 0;
+
         private ITransport _communicationTransport;
 
         public bool Connect(string connectionString)
@@ -328,8 +334,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
         #endregion
 
         #region 4.11 Set FH and LBT Parameters
-
-
+        
         public bool SetFhLbtParameters(FhLbtParameters parameters)
         {
             var dt = BitConverter.GetBytes(parameters.DwellTime).Reverse();
@@ -356,6 +361,178 @@ namespace Kliskatek.Driver.Rain.REDRCP
 
         #endregion
 
+        #region 4.12 Get Tx Power Level
+
+        public bool GetTxPowerLevel(out TxPowerLevels powerLevels)
+        {
+            powerLevels = new TxPowerLevels();
+            if (ProcessRcpCommand(MessageCode.GetTxPower, out var responseArguments) != RcpReturnType.Success)
+                return false;
+            if (responseArguments.Count != 6)
+                return false;
+
+            var responseArgumentsArray = responseArguments.ToArray();
+            powerLevels.CurrentTxPower =
+                (double)(BinaryPrimitives.ReadInt16BigEndian(GetArraySlice(responseArgumentsArray, 0, 2))) / 10.0;
+            powerLevels.MinTxPower =
+                (double)(BinaryPrimitives.ReadInt16BigEndian(GetArraySlice(responseArgumentsArray, 2, 2))) / 10.0;
+            powerLevels.MaxTxPower =
+                (double)(BinaryPrimitives.ReadInt16BigEndian(GetArraySlice(responseArgumentsArray, 4, 2))) / 10.0;
+
+            return true;
+        }
+
+        #endregion
+
+        #region 4.13 Set Tx Power Level
+
+        public bool SetTxPowerLevel(double powerLevel)
+        {
+            var argumentPayload = BitConverter.GetBytes((short)(powerLevel * 10.0)).Reverse().ToList();
+            if (ProcessRcpCommand(MessageCode.SetTxPower, out var responseArguments, argumentPayload) !=
+                RcpReturnType.Success)
+                return false;
+            return ParseSingleByteResponsePayload(responseArguments);
+        }
+
+        #endregion
+
+        #region 4.14 RF CR signal control
+
+        public bool RfCwSignalControl(bool cwSignalControl)
+        {
+            List<byte> argumentPayload = new List<byte>
+            {
+                cwSignalControl ? (byte)0xFF : (byte)0x00
+            };
+            if (ProcessRcpCommand(MessageCode.RfCwSignalControl, out var responseArguments, argumentPayload) !=
+                RcpReturnType.Success)
+                return false;
+            return ParseSingleByteResponsePayload(responseArguments);
+        }
+
+        #endregion
+
+        #region 4.15 Read Type C UII
+
+        public bool ReadTypeCUiiResponse(out TypeCUii tag)
+        {
+            tag = new TypeCUii();
+            if (ProcessRcpCommand(MessageCode.ReadTypeCUii, out var responseArgument) != RcpReturnType.Success)
+                return false;
+            if (responseArgument.Count < 2)
+                return false;
+            var responseArgumentArray = responseArgument.ToArray();
+            tag.Pc = GetArraySlice(responseArgumentArray, 0, 2);
+            if (responseArgument.Count > 2)
+                tag.Epc = GetArraySlice(responseArgumentArray, 2);
+            return true;
+        }
+
+        public bool ReadTypeCUiiNotification(ReadTypeCUiiNotificationCallback callback)
+        {
+            _readTypeCUiiNotificationCallback = callback;
+            // This command does not return a notification message type 
+            ClearReceivedCommandAnswerBuffer();
+            var command = AssembleRcpCommand(MessageCode.ReadTypeCUii);
+            _communicationTransport.TxByteList(command);
+            Interlocked.Exchange(ref _readTypeCUiiOngoing, 1);
+            return true;
+        }
+
+        #endregion
+
+        #region 4.16 Read Type C UII TID
+
+        public bool ReadTypeCUiiTid(byte MaxNumberTagsToRead, byte MaxElapsedTimeTagging, short RepeatCycle, ReadTypeCUiiTidNotificationCallback callback)
+        {
+            var argumentPayload = new List<byte> { MaxNumberTagsToRead, MaxElapsedTimeTagging };
+            var rc = BitConverter.GetBytes(RepeatCycle).Reverse();
+            argumentPayload.AddRange(rc);
+            if (ProcessRcpCommand(MessageCode.ReadTypeCUiiTid, out var responsePayload, argumentPayload) !=
+                RcpReturnType.Success)
+                return false;
+
+            if (!ParseSingleByteResponsePayload(responsePayload))
+                return false;
+
+            Interlocked.Exchange(ref _readTypeCUiiTidOngoing, 1);
+            return true;
+        }
+
+        #endregion
+
+        #region 4.17 Read Type C Tag Data
+
+        public bool ReadTypeCTagData(string epc, ParamMemory memoryBank, ushort startAddress, ushort wordCount,
+            out string readData, UInt32 accessPassword = 0)
+        {
+            readData = "";
+
+            var ap = BitConverter.GetBytes(accessPassword).Reverse();
+            var epcByteArray = Convert.FromHexString(epc);
+            var ul = BitConverter.GetBytes((ushort)epcByteArray.Length).Reverse();
+            var sa = BitConverter.GetBytes((ushort)startAddress).Reverse();
+            var dl = BitConverter.GetBytes((ushort)wordCount).Reverse();
+            
+            var argumentPayload = new List<byte>();
+            argumentPayload.AddRange(ap);
+            argumentPayload.AddRange(ul);
+            argumentPayload.AddRange(epcByteArray);
+            argumentPayload.Add((byte)memoryBank);
+            argumentPayload.AddRange(sa);
+            argumentPayload.AddRange(dl);
+
+            if (ProcessRcpCommand(MessageCode.ReadTypeCTagData, out var responsePayload, argumentPayload) !=
+                RcpReturnType.Success)
+                return false;
+
+            if (responsePayload.Count > 0)
+                readData = BitConverter.ToString(responsePayload.ToArray()).Replace("-", "");
+            return true;
+        }
+
+        #endregion
+
+        #region 4.18 Get Frequency Hopping Table
+
+        public bool GetFrequencyHoppingTable(out List<byte> channelNumbers)
+        {
+            channelNumbers = new List<byte>();
+            if (ProcessRcpCommand(MessageCode.GetFrequencyHoppingTable, out var responsePayload) !=
+                RcpReturnType.Success)
+                return false;
+
+            if (responsePayload.Count == 0)
+                return false;
+            var responsePayloadArray = responsePayload.ToArray();
+
+            if (responsePayloadArray.Length != responsePayloadArray[0] + 1)
+                return false;
+
+            for (int i=0; i < responsePayloadArray[0]; i++)
+                channelNumbers.Add(responsePayloadArray[i+1]);
+
+            return true;
+        }
+
+        #endregion
+
+        #region 4.19 Set Frequency Hopping Table
+
+        public bool SetFrequencyHoppingTable(List<byte> channelNumbers)
+        {
+            var argumentPayload = new List<byte> { (byte)channelNumbers.Count };
+            argumentPayload.AddRange(channelNumbers);
+            if (ProcessRcpCommand(MessageCode.SetFrequencyHoppingTable, out var responsePayload, argumentPayload) !=
+                RcpReturnType.Success)
+                return false;
+            if (responsePayload.Count != 1)
+                return false;
+            return ParseSingleByteResponsePayload(responsePayload);
+        }
+
+        #endregion
 
 
         public bool StartAutoRead2(AutoRead2NotificationCallback callback)
@@ -452,6 +629,12 @@ namespace Kliskatek.Driver.Rain.REDRCP
             if (responsePayload.Count != 1)
                 return false;
             return (responsePayload[Constants.ResponseArgOffset] == Constants.Success);
+        }
+
+        private int GetEpcByteLengthFromPc(ushort pc)
+        {
+            var wordCount = (pc >> 11);
+            return wordCount * 2;
         }
     }
 }

@@ -44,4 +44,17 @@
         public bool Lbt;
         public bool Cw;
     }
+
+    public class TxPowerLevels
+    {
+        public double CurrentTxPower;
+        public double MinTxPower;
+        public double MaxTxPower;
+    }
+
+    public class TypeCUii
+    {
+        public byte[] Pc;
+        public byte[] Epc;
+    }
 }
