@@ -469,7 +469,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
 
         #region 4.17 Read Type C Tag Data
 
-        public bool ReadTypeCTagData(string epc, ParamMemory memoryBank, ushort startAddress, ushort wordCount,
+        public bool ReadTypeCTagData(string epc, ParamMemoryBank memoryBank, ushort startAddress, ushort wordCount,
             out string readData, UInt32 accessPassword = 0)
         {
             readData = "";
@@ -711,6 +711,224 @@ namespace Kliskatek.Driver.Rain.REDRCP
             _autoRead2ExNotificationCallback = callback;
             Interlocked.Exchange(ref _autoRead2ExOngoing, 1);
             return true;
+        }
+
+        #endregion
+
+        #region 4.28 Get Frequency Information
+
+        // TODO: documentation says 8 byte response arguments. Receiving 9 byte response arguments with RED4SW
+        public bool GetFrequencyInformation(out FrequencyInformation frequencyInformation)
+        {
+            frequencyInformation = new FrequencyInformation();
+            if (ProcessRcpCommand(MessageCode.GetFrequencyInformation, out var responsePayload) !=
+                RcpReturnType.Success)
+                return false;
+            if (responsePayload.Count != 8)
+                return false;
+            var payload = responsePayload.ToArray();
+
+            frequencyInformation.Spacing = BinaryPrimitives.ReadUInt16BigEndian(payload.GetArraySlice(0, sizeof(UInt16)));
+            frequencyInformation.StartFreq = BinaryPrimitives.ReadUInt32BigEndian(payload.GetArraySlice(2, sizeof(UInt32)));
+            frequencyInformation.Channel = payload[6];
+            frequencyInformation.RfPreset = (ParamRfPreset)payload[7];
+            return true;
+        }
+
+        #endregion
+
+        #region 4.29 Set Frequency Information
+
+        public bool SetFrequencyInformation(FrequencyInformation frequencyInformation)
+        {
+            var spacing = BitConverter.GetBytes(frequencyInformation.Spacing).Reverse();
+            var startFreq = BitConverter.GetBytes(frequencyInformation.StartFreq).Reverse();
+            var channel = frequencyInformation.Channel;
+            var rfPreset = (byte)frequencyInformation.RfPreset;
+
+            var payloadArgument = new List<byte>();
+            payloadArgument.AddRange(spacing);
+            payloadArgument.AddRange(startFreq);
+            payloadArgument.Add(channel);
+            payloadArgument.Add(rfPreset);
+
+            if (ProcessRcpCommand(MessageCode.SetFrequencyInformation, out var responseAnswer, payloadArgument) !=
+                RcpReturnType.Success)
+                return false;
+            return ParseSingleByteResponsePayload(responseAnswer);
+        }
+
+        #endregion
+
+        #region 4.30 Write Type C Data
+
+        public bool WriteTypeCTagData(string epc, ParamMemoryBank memoryBank, ushort startAddress, string dataToWrite,
+            UInt32 accessPassword = 0)
+        {
+            var ap = BitConverter.GetBytes(accessPassword).Reverse();
+            var epcByteArray = Convert.FromHexString(epc);
+            var ul = BitConverter.GetBytes((ushort)epcByteArray.Length).Reverse();
+            var mb = (byte)memoryBank;
+            var sa = BitConverter.GetBytes(startAddress).Reverse();
+            var dt = Convert.FromHexString(dataToWrite);
+            var dl = BitConverter.GetBytes((ushort)dt.Length).Reverse();
+
+            var argumentPayload = new List<byte>();
+            argumentPayload.AddRange(ap);
+            argumentPayload.AddRange(ul);
+            argumentPayload.AddRange(epcByteArray);
+            argumentPayload.Add(mb);
+            argumentPayload.AddRange(sa);
+            argumentPayload.AddRange(dl);
+            argumentPayload.AddRange(dt);
+
+            if (ProcessRcpCommand(MessageCode.WriteTypeCTagData, out var responseArguments, argumentPayload) !=
+                RcpReturnType.Success)
+                return false;
+            if (responseArguments.Count != epcByteArray.Length) 
+                return false;
+            var payload = responseArguments.ToArray();
+
+            for (int i=0; i < payload.Length; i++)
+                if (epcByteArray[i] != payload[i])
+                    return false;
+            return true;
+        }
+
+        #endregion
+
+        #region 4.31 BlockWrite Type C Tag Data
+
+        public bool BlockWriteTypeCTagData(string epc, ParamMemoryBank memoryBank, ushort startAddress, string dataToWrite,
+            UInt32 accessPassword = 0)
+        {
+            var ap = BitConverter.GetBytes(accessPassword).Reverse();
+            var epcByteArray = Convert.FromHexString(epc);
+            var ul = BitConverter.GetBytes((ushort)epcByteArray.Length).Reverse();
+            var mb = (byte)memoryBank;
+            var sa = BitConverter.GetBytes(startAddress).Reverse();
+            var dt = Convert.FromHexString(dataToWrite);
+            var dl = BitConverter.GetBytes((ushort)dt.Length).Reverse();
+
+            var argumentPayload = new List<byte>();
+            argumentPayload.AddRange(ap);
+            argumentPayload.AddRange(ul);
+            argumentPayload.AddRange(epcByteArray);
+            argumentPayload.Add(mb);
+            argumentPayload.AddRange(sa);
+            argumentPayload.AddRange(dl);
+            argumentPayload.AddRange(dt);
+
+            if (ProcessRcpCommand(MessageCode.BlockWriteTypeCTagData, out var responseArguments, argumentPayload) !=
+                RcpReturnType.Success)
+                return false;
+            return ParseSingleByteResponsePayload(responseArguments);
+        }
+
+        #endregion
+
+        #region 4.32 BlockErase Type C Tag Data
+
+        public bool BlockEraseTypeCTagData(string epc, ParamMemoryBank memoryBank, ushort startAddress, ushort dataLength, 
+            UInt32 accessPassword = 0)
+        {
+            var ap = BitConverter.GetBytes(accessPassword).Reverse();
+            var epcByteArray = Convert.FromHexString(epc);
+            var ul = BitConverter.GetBytes((ushort)epcByteArray.Length).Reverse();
+            var mb = (byte)memoryBank;
+            var sa = BitConverter.GetBytes(startAddress).Reverse();
+            var dl = BitConverter.GetBytes(dataLength).Reverse();
+
+            var argumentPayload = new List<byte>();
+            argumentPayload.AddRange(ap);
+            argumentPayload.AddRange(ul);
+            argumentPayload.AddRange(epcByteArray);
+            argumentPayload.Add(mb);
+            argumentPayload.AddRange(sa);
+            argumentPayload.AddRange(dl);
+
+            if (ProcessRcpCommand(MessageCode.BlockEraseTypeCTagData, out var responseArguments, argumentPayload) !=
+                RcpReturnType.Success)
+                return false;
+            return ParseSingleByteResponsePayload(responseArguments);
+        }
+
+        #endregion
+
+        #region 4.33 BlockPermalock Type C Tag
+
+        public bool BlockPermalockTypeCTag(string epc, ParamReadLock readLock, ParamMemoryBank memoryBank,
+            ushort blockPointer, byte blockRange, string mask, UInt32 accessPassword = 0)
+        {
+            var ap = BitConverter.GetBytes(accessPassword).Reverse();
+            var epcByteArray = Convert.FromHexString(epc);
+            var ul = BitConverter.GetBytes((ushort)epcByteArray.Length).Reverse();
+            byte rfu = 0x00;
+            var rl = (byte)readLock;
+            var mb = (byte)memoryBank;
+            var bp = BitConverter.GetBytes(blockPointer).Reverse();
+            var br = blockRange;
+            var maskByteArray = Convert.FromHexString(mask);
+
+            var argumentPayload = new List<byte>();
+            argumentPayload.AddRange(ap);
+            argumentPayload.AddRange(ul);
+            argumentPayload.AddRange(epcByteArray);
+            argumentPayload.Add(rfu);
+            argumentPayload.Add(rl);
+            argumentPayload.Add(mb);
+            argumentPayload.AddRange(bp);
+            argumentPayload.Add(br);
+            argumentPayload.AddRange(maskByteArray);
+
+            if (ProcessRcpCommand(MessageCode.BlockPermalockTypeCTag, out var responseArgument, argumentPayload) !=
+                RcpReturnType.Success)
+                return false;
+            return ParseSingleByteResponsePayload(responseArgument);
+        }
+
+        #endregion
+
+        #region 4.34 Kill Type C Tag
+
+        public bool KillTypeCTag(UInt32 killPassword, string epc)
+        {
+            var kp = BitConverter.GetBytes(killPassword).Reverse();
+            var epcByteArray = Convert.FromHexString(epc);
+            var ul = BitConverter.GetBytes((ushort)epcByteArray.Length).Reverse();
+
+            var argumentPayload = new List<byte>();
+            argumentPayload.AddRange(kp);
+            argumentPayload.AddRange(ul);
+            argumentPayload.AddRange(epcByteArray);
+
+            if (ProcessRcpCommand(MessageCode.KillRecomTypeCTag, out var responsePayload, argumentPayload) !=
+                RcpReturnType.Success)
+                return false;
+            return ParseSingleByteResponsePayload(responsePayload);
+        }
+
+        #endregion
+
+        #region 4.35 Lock Type C Tag
+
+        public bool LocTypeCTag(string epc, UInt32 lockMaskAction, UInt32 accessPassword)
+        {
+            var ap = BitConverter.GetBytes(accessPassword).Reverse();
+            var epcByteArray = Convert.FromHexString(epc);
+            var ul = BitConverter.GetBytes((ushort)epcByteArray.Length).Reverse();
+            var ld = BitConverter.GetBytes(lockMaskAction).Reverse().ToArray();
+
+            var argumentPayload = new List<byte>();
+            argumentPayload.AddRange(ap);
+            argumentPayload.AddRange(ul);
+            argumentPayload.AddRange(epcByteArray);
+            argumentPayload.AddRange(ld.GetArraySlice(1));
+
+            if (ProcessRcpCommand(MessageCode.LockTypeCTag, out var responsePayload, argumentPayload) !=
+                RcpReturnType.Success)
+                return false;
+            return ParseSingleByteResponsePayload(responsePayload);
         }
 
         #endregion

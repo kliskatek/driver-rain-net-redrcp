@@ -20,6 +20,12 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
             if (!reader.Connect(connectionString))
                 return;
 
+            if (!reader.SetSystemReset())
+            {
+                Console.WriteLine("Could not reset system. Stopping execution");
+                return;
+            }
+
             if (reader.GetReaderInformationFirmwareVersion(out var firmwareVersion))
                 Console.WriteLine($"Firmware version = {firmwareVersion}");
 
@@ -44,7 +50,7 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
             if (reader.GetFhLbtParameters(out var fhLbtParameters))
                 Console.WriteLine("FH and LBT parameters obtained");
 
-            //if (reader.ReadTypeCTagData("E2003411B802011526370494", ParamMemory.Reserved, 0, 4, out var readData, 1))
+            //if (reader.ReadTypeCTagData("E2003411B802011526370494", ParamMemoryBank.Reserved, 0, 4, out var readData, 1))
             //    Console.WriteLine($"Read data : {readData}");
 
             if (reader.GetFrequencyHoppingTable(out var frequencyHoppingTable))
@@ -91,6 +97,18 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
             //    Thread.Sleep(2000);
             //}
 
+            //byte maxElapsedTimeS = 5;
+            //if (reader.StartAutoRead2Ex(ParamAutoRead2ExMode.EpcOnly, false, 1, 0, 0, 100, AutoRead2ExDelegateMethod))
+            //{
+            //    Console.WriteLine("StartAutoRead2Ex started");
+            //    Thread.Sleep((int)maxElapsedTimeS * 1100);
+            //}
+
+            //if (reader.GetFrequencyInformation(out var frequencyInformation))
+            //    Console.WriteLine(
+            //        $"Frequency Information: Spacing {frequencyInformation.Spacing}, Start Frequency {frequencyInformation.StartFreq}, Channel {frequencyInformation.Channel}, RF Preset {frequencyInformation.RfPreset}");
+                
+
             if (!reader.Disconnect())
                 Console.WriteLine("Serial port not disconnected");
         }
@@ -98,6 +116,14 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
         public static void AutoRead2DelegateMethod(string pc, string epc)
         {
             Console.WriteLine($"EPC = {epc}, PC = {pc}");
+        }
+
+        public static void AutoRead2ExDelegateMethod(ParamAutoRead2ExMode mode, bool tagRssi, byte antPort,
+            string pc, string epc, byte rssiI, byte rssiQ, byte gainI, byte gainQ)
+        {
+            Console.WriteLine($"[{pc}] EPC = {epc}");
+            if (tagRssi)
+                Console.WriteLine($"RSSI_I = {rssiI}, RSSI_Q = {rssiQ}, GAIN_I = {gainI}, GAIN_Q = {gainQ}");
         }
     }
 }

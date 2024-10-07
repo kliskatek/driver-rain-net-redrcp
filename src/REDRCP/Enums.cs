@@ -49,6 +49,8 @@
         StartAutoReadRssi = 0x38,
         StopAutoReadRssi = 0x39,
         StartAutoRead2Ex = 0x3A,
+        GetFrequencyInformation = 0x44,
+        SetFrequencyInformation = 0x45,
         WriteTypeCTagData = 0x46,
         BlockWriteTypeCTagData = 0x47,
         BlockEraseTypeCTagData = 0x48,
@@ -221,6 +223,19 @@
         EpcOnly = 0xC0
     }
 
+    public enum ParamRfPreset
+    {
+        Narrow900M = 0xF0,
+        Wide900M = 0xF1,
+        PredefinedRegionCodeOr800M = 0xF2
+    }
+
+    public enum ParamReadLock
+    {
+        Read = 0x00,
+        Permalock = 0x01
+    }
+
     //public enum AntiCollisionMode
     //{
     //    MultiTag = 3,
@@ -318,7 +333,7 @@
         TypeC = 0x02
     }
 
-    public enum ParamMemory
+    public enum ParamMemoryBank
     {
         Reserved = 0,
         Epc = 1,

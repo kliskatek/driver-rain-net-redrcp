@@ -72,4 +72,12 @@
         public byte QMax;
         public byte QMin;
     }
+
+    public class FrequencyInformation
+    {
+        public ushort Spacing;
+        public UInt32 StartFreq;
+        public byte Channel;
+        public ParamRfPreset RfPreset;
+    }
 }
