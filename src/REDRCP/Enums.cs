@@ -15,10 +15,12 @@
         GetRegion = 0x06,
         SetRegion = 0x07,
         SetSystemReset = 0x08,
-        GetSelectionEnables = 0x8E,
-        SetSelectionEnables = 0x8F,
-        GetSelectionFilter = 0xAE,
-        SetSelectionFilter = 0xAF,
+        GetSelectionEnable = 0x8E,
+        SetSelectionEnable = 0x8F,
+        GetMultiAntennaSequence = 0x99,
+        SetMultiAntennaSequence = 0x9A,
+        GetSelection = 0xAE,
+        SetSelection = 0xAF,
         GetTypeQueryRelatedParameters = 0x0D,
         SetTypeQueryRelatedParameters = 0x0E,
         GetRfChannel = 0x11,
@@ -236,6 +238,12 @@
         Permalock = 0x01
     }
 
+    public enum ParamFrequencyHoppingMode
+    {
+        NormalMode = 0x00,
+        SmartHoppingMode = 0x01
+    }
+
     //public enum AntiCollisionMode
     //{
     //    MultiTag = 3,
@@ -253,17 +261,17 @@
     public enum Registry
     {
         Version = 0,
-        Fw = 1,
+        FirmwareDate = 1,
         Band = 2,
-        AntiCollision = 3,
-        Modulation = 4,
-        Query = 5,
+        AntiCollisionMode = 3,
+        ModulationMode = 4,
+        QueryQValue = 5,
         PartNumber = 6,
-        Dev = 7,
+        DeviceType = 7,
         FwVersion = 8,
-        LeakMode = 9,
+        LeakCalMode = 9,
         Session = 10,
-        Serial = 11,
+        SerialNumber = 11,
         Beep = 12,
         GpAdc = 13,
         Q = 14,
@@ -325,6 +333,13 @@
         TxChLow = 70,
         AntSequence = 71,
         FrequencyTable = 72
+    }
+
+    public enum RegistryItemStatus
+    {
+        Inactive = 0x00,
+        ReadOnly = 0xBC,
+        Active = 0xA5
     }
 
     public enum TagType

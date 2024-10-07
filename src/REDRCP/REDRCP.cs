@@ -19,6 +19,10 @@ namespace Kliskatek.Driver.Rain.REDRCP
         private int _readTypeCUiiTidOngoing = 0;
         private AutoReadRssiNotificationCallback _autoReadRssiNotificationCallback;
         private int _autoReadRssiOngoing = 0;
+        private GetDtcResultNotificationCallback _getDtcResultNotificationCallback;
+        private int _getDtcResultOngoing = 0;
+        private GetDtcResultNotificationCallback _setOptimmumFrequencyHoppingTableNotificationCallback;
+        private int _setOptimumFrequencyHoppingTableOngoing = 0;
 
         private AutoRead2ExNotificationCallback _autoRead2ExNotificationCallback;
         private int _autoRead2ExOngoing = 0;
@@ -933,6 +937,366 @@ namespace Kliskatek.Driver.Rain.REDRCP
 
         #endregion
 
+        #region 4.36 Get Selection Enable
+
+        public bool GetSelectionEnable(out byte enableStatus)
+        {
+            enableStatus = 0;
+            if (ProcessRcpCommand(MessageCode.GetSelectionEnable, out var responsePayload) != RcpReturnType.Success)
+                return false;
+            if (responsePayload.Count != 1)
+                return false;
+            enableStatus = responsePayload[0];
+            return true;
+        }
+
+        public bool GetSelectionEnable(out EnableStatus enableStatus)
+        {
+            enableStatus = new EnableStatus();
+            if (ProcessRcpCommand(MessageCode.GetSelectionEnable, out var responsePayload) != RcpReturnType.Success)
+                return false;
+            if (responsePayload.Count != 1)
+                return false;
+            enableStatus = responsePayload[0].ToEnableStatus();
+            return true;
+        }
+
+        #endregion
+
+        #region 4.37 Set Selection Enable
+
+        public bool SetSelectionEnable(byte enableStatus)
+        {
+            if (ProcessRcpCommand(MessageCode.SetSelectionEnable, out var responsePayload,
+                    new List<byte> { enableStatus }) != RcpReturnType.Success)
+                return false;
+            return ParseSingleByteResponsePayload(responsePayload);
+        }
+
+        public bool SetSelectionEnable(EnableStatus enableStatus)
+        {
+            if (ProcessRcpCommand(MessageCode.SetSelectionEnable, out var responsePayload,
+                    new List<byte> { enableStatus.ToByte() }) != RcpReturnType.Success)
+                return false;
+            return ParseSingleByteResponsePayload(responsePayload);
+        }
+
+        #endregion
+
+        #region 4.38 Get Multi-Antenna Sequence
+
+        public bool GetMultiAntennaSequence(out List<byte> antennaSequence)
+        {
+            antennaSequence = [];
+            if (ProcessRcpCommand(MessageCode.GetMultiAntennaSequence, out var responsePayload) !=
+                RcpReturnType.Success)
+                return false;
+            if (responsePayload.Count != responsePayload[0] + 1)
+                return false;
+            antennaSequence.AddRange(responsePayload.ToArray().GetArraySlice(1));
+            return true;
+        }
+
+        #endregion
+
+        #region 4.39 Set Multi-Antenna Sequence
+
+        public bool SetMultiAntennaSequence(List<byte> antennaSequence)
+        {
+            var payloadArguments = new List<byte> { (byte)antennaSequence.Count };
+            payloadArguments.AddRange(antennaSequence);
+            if (ProcessRcpCommand(MessageCode.SetMultiAntennaSequence, out var responsePayload, payloadArguments) !=
+                RcpReturnType.Success)
+                return false;
+            return ParseSingleByteResponsePayload(responsePayload);
+        }
+
+        #endregion
+
+        #region 4.40 Antenna Check
+
+        public bool AntennaCheck(byte refLevel, out AntennaCheckError antennaError)
+        {
+            antennaError = new AntennaCheckError();
+            ClearReceivedCommandAnswerBuffer();
+            var command = AssembleRcpCommand(MessageCode.AntennaCheck, [refLevel]);
+            _communicationTransport.TxByteList(command);
+            if (!_receivedCommandAnswerBuffer.TryTake(out var commandAnswer, Constants.RcpCommandMaxResponseTimeMs))
+            {
+                Log.Warning($"Command {MessageCode.AntennaCheck} timeout out");
+                return false;
+            }
+
+            if (commandAnswer.Count == 0)
+                return false;
+
+            var commandResponseCode = commandAnswer.First();
+            commandAnswer.RemoveAt(0);
+
+            switch (commandResponseCode)
+            {
+                case (byte)MessageCode.AntennaCheck:
+                    return ParseSingleByteResponsePayload(commandAnswer);
+                case (byte)MessageCode.Error:
+                    if (commandAnswer.Count != 3)
+                        return false;
+                    antennaError.IsFailure = true;
+                    antennaError.ErrorCode = commandAnswer[0];
+                    antennaError.SubErrorCode = commandAnswer[2];
+                    return false;
+                default:
+                    return false;
+            }
+        }
+
+        #endregion
+
+        #region 4.41 Get Selection
+
+        public bool GetSelection(byte index, out Selection selection)
+        {
+            selection = new Selection();
+            if (ProcessRcpCommand(MessageCode.GetSelection, out var responsePayload, [index]) != RcpReturnType.Success)
+                return false;
+            if (responsePayload.Count < 7)
+                return false;
+            
+            var payload = responsePayload.ToArray();
+            selection.Length = payload[6];
+            var lengthBytes = selection.Length >> 3;
+            // Round up if 3 least significant bits are not zero
+            lengthBytes += (((ushort)(selection.Length) & 0x07) > 0) ? 1 : 0;
+            if (responsePayload.Count != 7 + lengthBytes)
+                return false;
+
+            selection.Index = payload[0];
+            selection.Target = (ParamTarget)payload[1];
+            selection.Action = (ParamSelectAction)payload[2];
+            selection.MemoryBank = (ParamMemoryBank)payload[3];
+            selection.Pointer = BinaryPrimitives.ReadUInt16BigEndian(payload.GetArraySlice(4, sizeof(UInt16)));
+            if (selection.Length > 0)
+                selection.Mask = new List<byte>((payload.GetArraySlice(7)));
+            return true;
+        }
+
+        #endregion
+
+        #region 4.42 Set Selection
+
+        public bool SetSelection(Selection selection)
+        {
+            var argumentPayload = new List<byte>
+            {
+                selection.Index,
+                (byte)selection.Target,
+                (byte)selection.Action,
+                (byte)selection.MemoryBank
+            };
+            argumentPayload.AddRange(BitConverter.GetBytes(selection.Pointer).Reverse());
+            argumentPayload.Add(selection.Length);
+            argumentPayload.AddRange(selection.Mask);
+
+            if (ProcessRcpCommand(MessageCode.SetSelection, out var responseArgument, argumentPayload) !=
+                RcpReturnType.Success)
+                return false;
+            return ParseSingleByteResponsePayload(responseArgument);
+        }
+
+        #endregion
+
+        #region 4.43 Get RSSI
+
+        public bool GetRssi(out double rssi)
+        {
+            rssi = 0.0;
+            if (ProcessRcpCommand(MessageCode.GetRssi, out var responsePayload) != RcpReturnType.Success)
+                return false;
+            if (responsePayload.Count != 2)
+                return false;
+            var ushortRssi = BinaryPrimitives.ReadUInt16BigEndian(responsePayload.ToArray());
+            rssi = ((double)ushortRssi) / 10.0;
+            return true;
+        }
+
+        #endregion
+
+        #region 4.44 Scan RSSI
+
+        public bool ScanRssi(out ScanRssiParameters rssiParameters)
+        {
+            rssiParameters = new ScanRssiParameters();
+            if (ProcessRcpCommand(MessageCode.ScanRssi, out var responseArguments) != RcpReturnType.Success)
+                return false;
+            if (responseArguments.Count < 4)
+                return false;
+            var payload = responseArguments.ToArray();
+            rssiParameters.StartChannelNumber = payload[0];
+            rssiParameters.StopChannelNumber = payload[1];
+            rssiParameters.BestChannelNumber = payload[2];
+            rssiParameters.RssiLevels.AddRange(payload.GetArraySlice(3));
+            return true;
+        }
+
+        #endregion
+
+        #region 4.45 Get DTC Result
+
+        public bool GetDtcResult(out DtcResultResponseParameters parameters, GetDtcResultNotificationCallback callback)
+        {
+            parameters = new DtcResultResponseParameters();
+            ClearReceivedCommandAnswerBuffer();
+            var command = AssembleRcpCommand(MessageCode.GetDtcResult);
+            _communicationTransport.TxByteList(command);
+            if (!_receivedCommandAnswerBuffer.TryTake(out var commandAnswer, Constants.RcpCommandMaxResponseTimeMs))
+            {
+                Log.Warning($"Command {MessageCode.GetDtcResult} timed out");
+                return false;
+            }
+
+            if (commandAnswer.Count == 0)
+                return false;
+            var commandResponseCode = commandAnswer.First();
+            commandAnswer.RemoveAt(0);
+
+            if (commandResponseCode != (byte)MessageCode.GetDtcResult)
+                return false;
+            if (commandAnswer.Count != 5)
+                return false;
+
+            parameters.InductorNumber = commandAnswer[0];
+            parameters.DigitalTunableCapacitor1 = commandAnswer[1];
+            parameters.DigitalTunableCapacitor2 = commandAnswer[2];
+            parameters.LeakageRssi = commandAnswer[3];
+            parameters.LeakageCancellationAlgorithmStateNumber = commandAnswer[4];
+
+            _getDtcResultNotificationCallback = callback;
+            Interlocked.Exchange(ref _getDtcResultOngoing, 1);
+
+            return true;
+        }
+
+        #endregion
+
+        #region 4.46 Update Registry
+
+        public bool UpdateRegistry()
+        {
+            if (ProcessRcpCommand(MessageCode.UpdateRegistry, out var responseArguments) != RcpReturnType.Success)
+                return false;
+            return ParseSingleByteResponsePayload(responseArguments);
+        }
+
+        #endregion
+
+        #region 4.47 Get Registry Item
+
+        public bool GetRegistryItem(Registry registry, out RegistryItem item)
+        {
+            item = new RegistryItem();
+            var argumentPayload = new List<byte>();
+            argumentPayload.AddRange(BitConverter.GetBytes((ushort)registry).Reverse());
+            if (ProcessRcpCommand(MessageCode.GetRegistryItem, out var responseArguments, argumentPayload) !=
+                RcpReturnType.Success)
+                return false;
+            if (responseArguments.Count == 0)
+                return false;
+            item.Active = (RegistryItemStatus)responseArguments[0];
+            if (responseArguments.Count > 1)
+                item.Data.AddRange(responseArguments.ToArray().GetArraySlice(1));
+            return true;
+        }
+
+        #endregion
+
+        #region 4.48 Set Optimum Frequency Hopping Table
+
+        public bool SetOptimumFrequencyHoppingTable(GetDtcResultNotificationCallback callback)
+        {
+            if (ProcessRcpCommand(MessageCode.SetOptimumFrequencyHoppingTable, out var responseArgument) !=
+                RcpReturnType.Success)
+                return false;
+            if (!ParseSingleByteResponsePayload(responseArgument))
+                return false;
+
+            Interlocked.Exchange(ref _setOptimumFrequencyHoppingTableOngoing, 1);
+            _setOptimmumFrequencyHoppingTableNotificationCallback = callback;
+
+            if (!_receivedCommandAnswerBuffer.TryTake(out var stopResponseArgument,
+                    Constants.RcpCommandMaxResponseTimeMs * 2))
+            {
+                Interlocked.Exchange(ref _setOptimumFrequencyHoppingTableOngoing, 0);
+                return false;
+            }
+
+            Interlocked.Exchange(ref _setOptimumFrequencyHoppingTableOngoing, 0);
+            if (stopResponseArgument.Count != 2)
+                return false;
+            var stopResponseCode = stopResponseArgument.First();
+            var payload = stopResponseArgument.Last();
+            if (stopResponseCode == (byte)MessageCode.SetOptimumFrequencyHoppingTable)
+                return payload == (byte)0x01;
+            return false;
+        }
+
+        #endregion
+
+        #region 4.49 GetFrequency Hopping Mode
+
+        public bool GetFrequencyHoppingMode(out ParamFrequencyHoppingMode mode)
+        {
+            mode = ParamFrequencyHoppingMode.NormalMode;
+            if (ProcessRcpCommand(MessageCode.GetFrequencyHoppingMode, out var responseArgument) !=
+                RcpReturnType.Success)
+                return false;
+            if (responseArgument.Count != 1)
+                return false;
+            mode = (ParamFrequencyHoppingMode)responseArgument[0];
+            return true;
+        }
+
+        #endregion
+
+        #region 4.50 Set Frequency Hopping Mode
+
+        public bool SetFrequencyHoppingMode(ParamFrequencyHoppingMode mode)
+        {
+            var argumentPayload = new List<byte> { (byte)mode };
+            if (ProcessRcpCommand(MessageCode.SetFrequencyHoppingMode, out var responseArgument, argumentPayload) !=
+                RcpReturnType.Success)
+                return false;
+            return ParseSingleByteResponsePayload(responseArgument);
+        }
+
+        #endregion
+
+        #region 4.51 Get Tx Leakage RSSI Level for Smart Hopping Mode
+
+        public bool GetTxLeakageRssiLevelForSmartHoppingMode(out byte reference)
+        {
+            reference = 0;
+            if (ProcessRcpCommand(MessageCode.GetTxLeakageRssiLevelSmartHoppingMode, out var responseArgument) !=
+                RcpReturnType.Success)
+                return false;
+            if (responseArgument.Count != 1)
+                return false;
+            reference = responseArgument[0];
+            return true;
+        }
+
+        #endregion
+
+        #region 4.52 Set Tx Leakage RSSI Level for Smart Hopping Mode
+
+        public bool SetTxLeakageRssiLevelForSmartHoppingMode(byte reference)
+        {
+            if (ProcessRcpCommand(MessageCode.SetTxLeakageRsiiLevelSmartHoppingMode, out var responseArgument,
+                    [reference]) != RcpReturnType.Success)
+                return false;
+            return ParseSingleByteResponsePayload(responseArgument);
+        }
+
+        #endregion
+
         #endregion
 
         private RcpReturnType ProcessRcpCommand(MessageCode messageCode, out List<byte> responsePayload, List<byte> commandPayload = null)
@@ -946,6 +1310,9 @@ namespace Kliskatek.Driver.Rain.REDRCP
                 Log.Warning($"Command {messageCode} timed out");
                 return RcpReturnType.NoResponse;
             }
+
+            if (commandAnswer.Count == 0)
+                return RcpReturnType.OtherError;
 
             // Extract command response code and leave commandAnswer as the response payload
             var commandResponseCode = commandAnswer.First();

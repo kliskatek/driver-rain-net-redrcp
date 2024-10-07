@@ -68,6 +68,12 @@ namespace Kliskatek.Driver.Rain.REDRCP
                     if (_autoRead2ExOngoing > 0)
                         HandleAutoRead2ExOngoing();
                     break;
+                case MessageCode.GetDtcResult:
+                    if (_getDtcResultOngoing > 0)
+                        HandleGetDtcResult();
+                    if (_setOptimumFrequencyHoppingTableOngoing > 0)
+                        HandleSetOptimumFrequencyHoppingTable();
+                    break;
                 default:
                     break;
             }
@@ -212,6 +218,48 @@ namespace Kliskatek.Driver.Rain.REDRCP
                         gainQ = payload[pointer++];
                     }
                     _autoRead2ExNotificationCallback(mode, tagRssi, antPort, pc, epc, rssiI, rssiQ, gainI, gainQ);
+                    break;
+            }
+        }
+
+        private void HandleGetDtcResult()
+        {
+            switch (_rcpPayloadBuffer.Count)
+            {
+                case 7:
+                    var parameters = new DtcResultNotificationParameters();
+                    int arrayPointer = 0;
+                    parameters.InductorNumber = _rcpPayloadBuffer[arrayPointer++];
+                    parameters.DigitalTunableCapacitor1 = _rcpPayloadBuffer[arrayPointer++];
+                    parameters.DigitalTunableCapacitor2 = _rcpPayloadBuffer[arrayPointer++];
+                    parameters.LeakageRssi = _rcpPayloadBuffer[arrayPointer++];
+                    parameters.LeakageCancellationAlgorithmStateNumber = _rcpPayloadBuffer[arrayPointer++];
+                    parameters.CurrentChannel = _rcpPayloadBuffer[arrayPointer++];
+                    parameters.LeakageCancellationOperationTime = _rcpPayloadBuffer[arrayPointer++];
+                    _getDtcResultNotificationCallback(parameters);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private void HandleSetOptimumFrequencyHoppingTable()
+        {
+            switch (_rcpPayloadBuffer.Count)
+            {
+                case 7:
+                    var parameters = new DtcResultNotificationParameters();
+                    int arrayPointer = 0;
+                    parameters.InductorNumber = _rcpPayloadBuffer[arrayPointer++];
+                    parameters.DigitalTunableCapacitor1 = _rcpPayloadBuffer[arrayPointer++];
+                    parameters.DigitalTunableCapacitor2 = _rcpPayloadBuffer[arrayPointer++];
+                    parameters.LeakageRssi = _rcpPayloadBuffer[arrayPointer++];
+                    parameters.LeakageCancellationAlgorithmStateNumber = _rcpPayloadBuffer[arrayPointer++];
+                    parameters.CurrentChannel = _rcpPayloadBuffer[arrayPointer++];
+                    parameters.LeakageCancellationOperationTime = _rcpPayloadBuffer[arrayPointer++];
+                    _setOptimmumFrequencyHoppingTableNotificationCallback(parameters);
+                    break;
+                default:
                     break;
             }
         }

@@ -80,4 +80,63 @@
         public byte Channel;
         public ParamRfPreset RfPreset;
     }
+
+    public class EnableStatus
+    {
+        public bool Sel1;
+        public bool Sel2;
+        public bool Sel3;
+        public bool Sel4;
+        public bool Sel5;
+        public bool Sel6;
+        public bool Sel7;
+        public bool Sel8;
+    }
+
+    public class AntennaCheckError
+    {
+        public bool IsFailure;
+        public byte ErrorCode;
+        public byte SubErrorCode;
+    }
+
+    public class Selection
+    {
+        public byte Index;
+        public ParamTarget Target;
+        public ParamSelectAction Action;
+        public ParamMemoryBank MemoryBank;
+        public ushort Pointer;
+        public byte Length;
+        public List<byte> Mask = [];
+    }
+
+    public class ScanRssiParameters
+    {
+        public byte StartChannelNumber;
+        public byte StopChannelNumber;
+        public byte BestChannelNumber;
+        public List<byte> RssiLevels = [];
+    }
+
+    public class DtcResultResponseParameters
+    {
+        public byte InductorNumber;
+        public byte DigitalTunableCapacitor1;
+        public byte DigitalTunableCapacitor2;
+        public byte LeakageRssi;
+        public byte LeakageCancellationAlgorithmStateNumber;
+    }
+
+    public class DtcResultNotificationParameters : DtcResultResponseParameters
+    {
+        public byte CurrentChannel;
+        public byte LeakageCancellationOperationTime;
+    }
+
+    public class RegistryItem
+    {
+        public RegistryItemStatus Active;
+        public List<byte> Data = [];
+    }
 }

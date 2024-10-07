@@ -11,4 +11,6 @@
 
     public delegate void AutoRead2ExNotificationCallback(ParamAutoRead2ExMode mode, bool tagRssi, byte antPort,
         string pc, string epc, byte rssiI, byte rssiQ, byte gainI, byte gainQ);
+
+    public delegate void GetDtcResultNotificationCallback(DtcResultNotificationParameters parameters);
 }
