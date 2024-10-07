@@ -17,6 +17,11 @@ namespace Kliskatek.Driver.Rain.REDRCP
         private int _readTypeCUiiOngoing = 0;
         private ReadTypeCUiiTidNotificationCallback _readTypeCUiiTidNotificationCallback;
         private int _readTypeCUiiTidOngoing = 0;
+        private AutoReadRssiNotificationCallback _autoReadRssiNotificationCallback;
+        private int _autoReadRssiOngoing = 0;
+
+        private AutoRead2ExNotificationCallback _autoRead2ExNotificationCallback;
+        private int _autoRead2ExOngoing = 0;
 
         private ITransport _communicationTransport;
 
@@ -527,22 +532,97 @@ namespace Kliskatek.Driver.Rain.REDRCP
             if (ProcessRcpCommand(MessageCode.SetFrequencyHoppingTable, out var responsePayload, argumentPayload) !=
                 RcpReturnType.Success)
                 return false;
-            if (responsePayload.Count != 1)
+            return ParseSingleByteResponsePayload(responsePayload);
+        }
+
+        #endregion
+
+        #region 4.20 Get Modulation Mode
+
+        public bool GetModulationMode(out ModulationMode modulationMode)
+        {
+            modulationMode = new ModulationMode();
+            if (ProcessRcpCommand(MessageCode.GetModulationMode, out var responsePayload) != RcpReturnType.Success)
+                return false;
+            if (responsePayload.Count != 4)
+                return false;
+
+            var responsePayloadArray = responsePayload.ToArray();
+            modulationMode.BackscatterLinkFrequency =
+                BinaryPrimitives.ReadUInt16BigEndian(GetArraySlice(responsePayloadArray, 0, sizeof(UInt16)));
+            modulationMode.RxMod = (ParamModulation)responsePayloadArray[2];
+            modulationMode.Dr = (ParamDr)responsePayloadArray[3];
+
+            return true;
+        }
+
+        #endregion
+
+        #region 4.21 Set Modulation Mode
+
+        public bool SetModulationMode(ModulationMode modulationMode)
+        {
+            var blf = BitConverter.GetBytes(modulationMode.BackscatterLinkFrequency).Reverse();
+            var payloadArguments = new List<byte> { 0xFF };
+            payloadArguments.AddRange(blf);
+            payloadArguments.Add((byte)modulationMode.RxMod);
+            payloadArguments.Add((byte)modulationMode.Dr);
+
+            if (ProcessRcpCommand(MessageCode.SetModulationMode, out var responsePayload, payloadArguments) !=
+                RcpReturnType.Success)
                 return false;
             return ParseSingleByteResponsePayload(responsePayload);
         }
 
         #endregion
 
+        #region 4.22 Get Anti-Collision Mode
+
+        public bool GetAntiCollisionMode(out AntiCollisionModeParameters antiCollisionMode)
+        {
+            antiCollisionMode = new AntiCollisionModeParameters();
+            if (ProcessRcpCommand(MessageCode.GetAntiCollisionMode, out var responsePayload) != RcpReturnType.Success)
+                return false;
+            if (responsePayload.Count != 4)
+                return false;
+            antiCollisionMode.Mode = (AntiCollisionMode)responsePayload[0];
+            antiCollisionMode.QStart = responsePayload[1];
+            antiCollisionMode.QMax = responsePayload[2];
+            antiCollisionMode.QMin = responsePayload[3];
+            return true;
+        }
+
+        #endregion
+
+        #region 4.23 Set Anti-Collision Mode
+
+        public bool SetAntiCollisionMode(AntiCollisionModeParameters antiCollisionMode)
+        {
+            var argumentPayload = new List<byte>
+            {
+                (byte)antiCollisionMode.Mode,
+                antiCollisionMode.QStart,
+                antiCollisionMode.QMax,
+                antiCollisionMode.QMin,
+            };
+            if (ProcessRcpCommand(MessageCode.SetAntiCollisionMode, out var responsePayload, argumentPayload) !=
+                RcpReturnType.Success)
+                return false;
+            return ParseSingleByteResponsePayload(responsePayload);
+        }
+
+        #endregion
+
+        #region 4.24 Start Auto Read2
 
         public bool StartAutoRead2(AutoRead2NotificationCallback callback)
         {
             try
             {
                 _autoRead2NotificationCallback = callback;
-                if (ProcessRcpCommand(MessageCode.StartAutoRead2, out var result) != RcpReturnType.Success)
+                if (ProcessRcpCommand(MessageCode.StartAutoRead2, out var responseArguments) != RcpReturnType.Success)
                     return false;
-                if (!((result.Count == 1) && (result[Constants.ResponseArgOffset] == Constants.Success)))
+                if (!ParseSingleByteResponsePayload(responseArguments))
                     return false;
                 Interlocked.Exchange(ref _autoRead2Ongoing, 1);
                 return true;
@@ -555,13 +635,45 @@ namespace Kliskatek.Driver.Rain.REDRCP
             }
         }
 
+        #endregion
+
+        #region 4.25 Start Auto Read RSSI
+
+        public bool StartAutoReadRssi(TagType tagType, byte maximumNumberOfTags, byte maximumElapsedTime,
+            ushort repeatCycle, AutoReadRssiNotificationCallback callback)
+        {
+            var rc = BitConverter.GetBytes(repeatCycle).Reverse();
+            var argumentPayload = new List<byte>
+            {
+                (byte)tagType,
+                maximumNumberOfTags,
+                maximumElapsedTime
+            };
+            argumentPayload.AddRange(rc);
+
+            if (ProcessRcpCommand(MessageCode.StartAutoReadRssi, out var responsePayload, argumentPayload) !=
+                RcpReturnType.Success)
+                return false;
+
+            if (!ParseSingleByteResponsePayload(responsePayload))
+                return false;
+
+            _autoReadRssiNotificationCallback = callback;
+            Interlocked.Exchange(ref _autoReadRssiOngoing, 1);
+            return true;
+        }
+
+        #endregion
+
+        #region 4.26 Stop Auto Read2
+
         public bool StopAutoRead2()
         {
             try
             {
-                if (ProcessRcpCommand(MessageCode.StopAutoRead2, out var result) != RcpReturnType.Success)
+                if (ProcessRcpCommand(MessageCode.StopAutoRead2, out var responseArguments) != RcpReturnType.Success)
                     return false;
-                if (!((result.Count == 1) && (result[Constants.ResponseArgOffset] == Constants.Success)))
+                if (!ParseSingleByteResponsePayload(responseArguments))
                     return false;
                 Interlocked.Exchange(ref _autoRead2Ongoing, 0);
                 return true;
@@ -572,6 +684,37 @@ namespace Kliskatek.Driver.Rain.REDRCP
                 return false;
             }
         }
+
+        #endregion
+
+        #region 4.27 Start Auto Read2 Ex
+
+        // TODO: Documentation does not show notification filed when TagRssi = True. Testing pending with real hardware
+        public bool StartAutoRead2Ex(ParamAutoRead2ExMode mode, bool tagRssi, byte antPort, byte maximumNumberOfTags,
+            byte maximumElapsedTime, ushort repeatCycle, AutoRead2ExNotificationCallback callback)
+        {
+            var rc = BitConverter.GetBytes(repeatCycle).Reverse();
+            var argumentPayload = new List<byte>
+            {
+                (byte)mode,
+                (byte)(tagRssi ? 1 : 0),
+                antPort,
+                maximumNumberOfTags,
+                maximumElapsedTime
+            };
+            argumentPayload.AddRange(rc);
+            if (ProcessRcpCommand(MessageCode.StartAutoRead2Ex, out var responsePayload, argumentPayload) !=
+                RcpReturnType.Success)
+                return false;
+            if (!ParseSingleByteResponsePayload(responsePayload))
+                return false;
+            _autoRead2ExNotificationCallback = callback;
+            Interlocked.Exchange(ref _autoRead2ExOngoing, 1);
+            return true;
+        }
+
+        #endregion
+
         #endregion
 
         private RcpReturnType ProcessRcpCommand(MessageCode messageCode, out List<byte> responsePayload, List<byte> commandPayload = null)

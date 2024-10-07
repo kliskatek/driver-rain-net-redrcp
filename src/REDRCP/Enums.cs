@@ -31,6 +31,7 @@
         ReadTypeCUii = 0x22,
         ReadTypeCUiiRssi = 0x23,
         ReadTypeCUiiTid = 0x25,
+        ReadTypeCUiiEx2 = 0x26,
         ReadTypeCTagData = 0x29,
         ReadTypeCTagLongData = 0x2A,
         RcpCmdGetTxPwrRaw = 0x2C,
@@ -39,14 +40,15 @@
         SetSession = 0x2F,
         GetFrequencyHoppingTable = 0x30,
         SetFrequencyHoppingTable = 0x31,
-        GetModulation = 0x32,
-        SetModulation = 0x33,
+        GetModulationMode = 0x32,
+        SetModulationMode = 0x33,
         GetAntiCollisionMode = 0x34,
         SetAntiCollisionMode = 0x35,
         StartAutoRead2 = 0x36,
         StopAutoRead2 = 0x37,
         StartAutoReadRssi = 0x38,
         StopAutoReadRssi = 0x39,
+        StartAutoRead2Ex = 0x3A,
         WriteTypeCTagData = 0x46,
         BlockWriteTypeCTagData = 0x47,
         BlockEraseTypeCTagData = 0x48,
@@ -214,12 +216,23 @@
         MatchNoChangeNoMatchToggle = 7
     }
 
+    public enum ParamAutoRead2ExMode
+    {
+        EpcOnly = 0xC0
+    }
+
+    //public enum AntiCollisionMode
+    //{
+    //    MultiTag = 3,
+    //    SingleTag = 32,
+    //    UniqueRecognition = 16,
+    //    Manual = 0
+    //}
+
     public enum AntiCollisionMode
     {
-        MultiTag = 3,
-        SingleTag = 32,
-        UniqueRecognition = 16,
-        Manual = 0
+        Manual = 0x01,
+        Auto = 0x03
     }
 
     public enum Registry

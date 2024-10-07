@@ -52,6 +52,22 @@ namespace Kliskatek.Driver.Rain.REDRCP
                     if (_readTypeCUiiTidOngoing > 0)
                         HandleReadTypeCUiiTidOngoing();
                     break;
+                case MessageCode.ReadTypeCUiiRssi:
+                    if (_autoReadRssiOngoing > 0)
+                        HandleAutoReadRssiOngoing();
+                    break;
+                case MessageCode.StartAutoReadRssi:
+                    if (_autoReadRssiOngoing > 0)
+                        HandleAutoReadRssiOngoing();
+                    break;
+                case MessageCode.ReadTypeCUiiEx2:
+                    if (_autoRead2ExOngoing > 0)
+                        HandleAutoRead2ExOngoing();
+                    break;
+                case MessageCode.StartAutoRead2Ex:
+                    if (_autoRead2ExOngoing > 0)
+                        HandleAutoRead2ExOngoing();
+                    break;
                 default:
                     break;
             }
@@ -106,8 +122,8 @@ namespace Kliskatek.Driver.Rain.REDRCP
                     // Check if payload can store PC
                     if (payload.Length < 2)
                         return;
-                    pcUshort = BinaryPrimitives.ReadUInt16BigEndian(GetArraySlice(payload, 0, 2));
-                    pc = BitConverter.ToString(payload.GetArraySlice(0, 2)).Replace("-", "");
+                    pcUshort = BinaryPrimitives.ReadUInt16BigEndian(GetArraySlice(payload, 0, sizeof(UInt16)));
+                    pc = BitConverter.ToString(payload.GetArraySlice(0, sizeof(UInt16))).Replace("-", "");
                     // Check if payload can store PC + EPC
                     var epcByteLength = GetEpcByteLengthFromPc(pcUshort);
                     if (payload.Length < 2 + epcByteLength)
@@ -116,6 +132,86 @@ namespace Kliskatek.Driver.Rain.REDRCP
                     if (payload.Length > 2 + epcByteLength)
                         tid = BitConverter.ToString(payload.GetArraySlice(2 + epcByteLength)).Replace("-", "");
                     _readTypeCUiiTidNotificationCallback(pc, epc, tid);
+                    break;
+            }
+        }
+
+        private void HandleAutoReadRssiOngoing()
+        {
+            switch (_rcpPayloadBuffer.Count)
+            {
+                case 1:
+                    if (_rcpPayloadBuffer[0] == 0x1F)
+                        Interlocked.Exchange(ref _autoReadRssiOngoing, 0);
+                    break;
+                default:
+                    var payload = _rcpPayloadBuffer.ToArray();
+                    ushort pcUshort = 0;
+                    string pc = "";
+                    string epc = "";
+                    // Check if payload can store PC
+                    if (payload.Length < 2)
+                        return;
+                    pcUshort = BinaryPrimitives.ReadUInt16BigEndian(GetArraySlice(payload, 0, sizeof(UInt16)));
+                    pc = BitConverter.ToString(payload.GetArraySlice(0, sizeof(UInt16))).Replace("-", "");
+                    // Check if payload can store PC + EPC + RSSI + GAIN
+                    var epcByteLength = GetEpcByteLengthFromPc(pcUshort);
+                    if (payload.Length != 2 + epcByteLength + 4)
+                        return;
+                    epc = BitConverter.ToString(payload.GetArraySlice(2, epcByteLength)).Replace("-", "");
+                    // Pointer to RSSI / GAIN parameters in payload array
+                    var pointer = 2 + epcByteLength;
+                    var rssiI = payload[pointer++];
+                    var rssiQ = payload[pointer++];
+                    var gainI = payload[pointer++];
+                    var gainQ = payload[pointer++];
+                    _autoReadRssiNotificationCallback(pc, epc, rssiI, rssiQ, gainI, gainQ);
+                    break;
+            }
+        }
+
+        private void HandleAutoRead2ExOngoing()
+        {
+            switch (_rcpPayloadBuffer.Count)
+            {
+                case 1:
+                    if (_rcpPayloadBuffer[0] == 0x1F)
+                        Interlocked.Exchange(ref _autoRead2ExOngoing, 0);
+                    break;
+                default:
+                    var payload = _rcpPayloadBuffer.ToArray();
+                    // Check if payload can store Mode + Tag RSSI + AntPort + PC
+                    if (payload.Length < 5)
+                        return;
+                    var mode = (ParamAutoRead2ExMode)payload[0];
+                    bool tagRssi = payload[1] > 0;
+                    var antPort = payload[2];
+                    ushort pcUshort = BinaryPrimitives.ReadUInt16BigEndian(GetArraySlice(payload, 3, sizeof(UInt16)));
+                    var epcByteLength = GetEpcByteLengthFromPc(pcUshort);
+                    // Check if payload can store Mode + Tag RSSI + AntPort + PC + EPC
+                    if (payload.Length < 5 + epcByteLength)
+                        return;
+                    string pc = BitConverter.ToString(payload.GetArraySlice(3, sizeof(UInt16))).Replace("-", "");
+                    string epc = BitConverter.ToString(payload.GetArraySlice(5, epcByteLength)).Replace("-", "");
+
+                    byte rssiI = 0;
+                    byte rssiQ = 0;
+                    byte gainI = 0;
+                    byte gainQ = 0;
+
+                    if (tagRssi)
+                    {
+                        // Check if payload can store Mode + Tag RSSI + AntPort + PC + EPC + RSSI_I + RSSI_Q + GAIN_I + GAIN_Q
+                        if (payload.Length != 5 + epcByteLength + 4)
+                            return;
+                        // Pointer to RSSI / GAIN parameters in payload array
+                        var pointer = 5 + epcByteLength;
+                        rssiI = payload[pointer++];
+                        rssiQ = payload[pointer++];
+                        gainI = payload[pointer++];
+                        gainQ = payload[pointer++];
+                    }
+                    _autoRead2ExNotificationCallback(mode, tagRssi, antPort, pc, epc, rssiI, rssiQ, gainI, gainQ);
                     break;
             }
         }

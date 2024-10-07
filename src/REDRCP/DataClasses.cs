@@ -57,4 +57,19 @@
         public byte[] Pc;
         public byte[] Epc;
     }
+
+    public class ModulationMode
+    {
+        public ushort BackscatterLinkFrequency;
+        public ParamModulation RxMod;
+        public ParamDr Dr;
+    }
+
+    public class AntiCollisionModeParameters
+    {
+        public AntiCollisionMode Mode;
+        public byte QStart;
+        public byte QMax;
+        public byte QMin;
+    }
 }
