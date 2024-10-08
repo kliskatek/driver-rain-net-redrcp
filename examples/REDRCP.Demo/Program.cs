@@ -9,7 +9,7 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
         static void Main(string[] args)
         {
             Console.WriteLine("REDRCP ");
-
+            
             var reader = new REDRCP();
 
             var connectionString = JsonConvert.SerializeObject(new SerialPortConnectionParameters
@@ -19,12 +19,13 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
 
             if (!reader.Connect(connectionString))
                 return;
+            reader.OnNotificationReceived += OnNotificationReceived;
 
-            if (!reader.SetSystemReset())
-            {
-                Console.WriteLine("Could not reset system. Stopping execution");
-                return;
-            }
+            //if (!reader.SetSystemReset())
+            //{
+            //    Console.WriteLine("Could not reset system. Stopping execution");
+            //    return;
+            //}
 
             if (reader.GetReaderInformationFirmwareVersion(out var firmwareVersion))
                 Console.WriteLine($"Firmware version = {firmwareVersion}");
@@ -86,16 +87,16 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
                     $"Anti-collision mode : mode {anticollisionMode.Mode}, Q Start {anticollisionMode.QStart}, Q Max {anticollisionMode.QMax}, Q Min {anticollisionMode.QMin}");
 
 
-            //for (int i = 0; i < 1; i++)
-            //{
-            //    reader.StartAutoRead2(AutoRead2DelegateMethod);
+            for (int i = 0; i < 1; i++)
+            {
+                reader.StartAutoRead2();
 
-            //    Thread.Sleep(2000);
+                Thread.Sleep(2000);
 
-            //    reader.StopAutoRead2();
+                reader.StopAutoRead2();
 
-            //    Thread.Sleep(2000);
-            //}
+                Thread.Sleep(2000);
+            }
 
             //byte maxElapsedTimeS = 5;
             //if (reader.StartAutoRead2Ex(ParamAutoRead2ExMode.EpcOnly, false, 1, 0, 0, 100, AutoRead2ExDelegateMethod))
@@ -107,7 +108,7 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
             //if (reader.GetFrequencyInformation(out var frequencyInformation))
             //    Console.WriteLine(
             //        $"Frequency Information: Spacing {frequencyInformation.Spacing}, Start Frequency {frequencyInformation.StartFreq}, Channel {frequencyInformation.Channel}, RF Preset {frequencyInformation.RfPreset}");
-                
+
 
             if (!reader.Disconnect())
                 Console.WriteLine("Serial port not disconnected");
@@ -125,5 +126,34 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
             if (tagRssi)
                 Console.WriteLine($"RSSI_I = {rssiI}, RSSI_Q = {rssiQ}, GAIN_I = {gainI}, GAIN_Q = {gainQ}");
         }
+
+        public static void OnNotificationReceived(object sender, NotificationEventArgs e)
+        {
+            switch (e.NotificationType)
+            {
+                case SupportedNotifications.ReadTypeCUii:
+                    OnReadTypeCUiiNotification((ReadTypeCUiiNotificationParameters)e.NotificationParameters);
+                    break;
+                case SupportedNotifications.ReadTypeCUiiTid:
+                    OnReadTypeCUiiTidNotification((ReadTypeCUiiTidNotificationParameters)e.NotificationParameters);
+                    break;
+                default:
+                    Console.WriteLine($"Notification {e.NotificationType} not supported yet");
+                    break;
+            }
+        }
+
+        public static void OnReadTypeCUiiNotification(ReadTypeCUiiNotificationParameters parameters)
+        {
+            Console.WriteLine("ReadTypeCUii notification received");
+            Console.WriteLine($" * [{parameters.Pc}] EPC = {parameters.Epc}\n");
+        }
+
+        public static void OnReadTypeCUiiTidNotification(ReadTypeCUiiTidNotificationParameters parameters)
+        {
+            Console.WriteLine("ReadTypeCUiiTid notification received");
+            Console.WriteLine($" * [{parameters.Pc}] EPC = {parameters.Epc}, TID = {parameters.Tid}\n");
+        }
+
     }
 }

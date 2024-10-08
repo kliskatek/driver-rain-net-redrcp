@@ -128,12 +128,6 @@
         public byte LeakageCancellationAlgorithmStateNumber;
     }
 
-    public class DtcResultNotificationParameters : DtcResultResponseParameters
-    {
-        public byte CurrentChannel;
-        public byte LeakageCancellationOperationTime;
-    }
-
     public class RegistryItem
     {
         public RegistryItemStatus Active;

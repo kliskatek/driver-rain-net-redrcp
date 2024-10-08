@@ -1,7 +1,5 @@
 ﻿using System.Buffers.Binary;
-using System.Diagnostics;
 using Kliskatek.Driver.Rain.REDRCP.Transports;
-using Newtonsoft.Json.Converters;
 using Serilog;
 
 namespace Kliskatek.Driver.Rain.REDRCP
@@ -11,22 +9,6 @@ namespace Kliskatek.Driver.Rain.REDRCP
     /// </summary>
     public partial class REDRCP
     {
-        private AutoRead2NotificationCallback _autoRead2NotificationCallback;
-        private int _autoRead2Ongoing = 0;
-        private ReadTypeCUiiNotificationCallback _readTypeCUiiNotificationCallback;
-        private int _readTypeCUiiOngoing = 0;
-        private ReadTypeCUiiTidNotificationCallback _readTypeCUiiTidNotificationCallback;
-        private int _readTypeCUiiTidOngoing = 0;
-        private AutoReadRssiNotificationCallback _autoReadRssiNotificationCallback;
-        private int _autoReadRssiOngoing = 0;
-        private GetDtcResultNotificationCallback _getDtcResultNotificationCallback;
-        private int _getDtcResultOngoing = 0;
-        private GetDtcResultNotificationCallback _setOptimmumFrequencyHoppingTableNotificationCallback;
-        private int _setOptimumFrequencyHoppingTableOngoing = 0;
-
-        private AutoRead2ExNotificationCallback _autoRead2ExNotificationCallback;
-        private int _autoRead2ExOngoing = 0;
-
         private ITransport _communicationTransport;
 
         public bool Connect(string connectionString)
@@ -438,14 +420,11 @@ namespace Kliskatek.Driver.Rain.REDRCP
             return true;
         }
 
-        public bool ReadTypeCUiiNotification(ReadTypeCUiiNotificationCallback callback)
+        public bool ReadTypeCUiiNotification()
         {
-            _readTypeCUiiNotificationCallback = callback;
-            // This command does not return a notification message type 
             ClearReceivedCommandAnswerBuffer();
             var command = AssembleRcpCommand(MessageCode.ReadTypeCUii);
             _communicationTransport.TxByteList(command);
-            Interlocked.Exchange(ref _readTypeCUiiOngoing, 1);
             return true;
         }
 
@@ -453,7 +432,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
 
         #region 4.16 Read Type C UII TID
 
-        public bool ReadTypeCUiiTid(byte MaxNumberTagsToRead, byte MaxElapsedTimeTagging, short RepeatCycle, ReadTypeCUiiTidNotificationCallback callback)
+        public bool ReadTypeCUiiTid(byte MaxNumberTagsToRead, byte MaxElapsedTimeTagging, short RepeatCycle)
         {
             var argumentPayload = new List<byte> { MaxNumberTagsToRead, MaxElapsedTimeTagging };
             var rc = BitConverter.GetBytes(RepeatCycle).Reverse();
@@ -465,7 +444,6 @@ namespace Kliskatek.Driver.Rain.REDRCP
             if (!ParseSingleByteResponsePayload(responsePayload))
                 return false;
 
-            Interlocked.Exchange(ref _readTypeCUiiTidOngoing, 1);
             return true;
         }
 
@@ -619,24 +597,13 @@ namespace Kliskatek.Driver.Rain.REDRCP
 
         #region 4.24 Start Auto Read2
 
-        public bool StartAutoRead2(AutoRead2NotificationCallback callback)
+        public bool StartAutoRead2()
         {
-            try
-            {
-                _autoRead2NotificationCallback = callback;
-                if (ProcessRcpCommand(MessageCode.StartAutoRead2, out var responseArguments) != RcpReturnType.Success)
-                    return false;
-                if (!ParseSingleByteResponsePayload(responseArguments))
-                    return false;
-                Interlocked.Exchange(ref _autoRead2Ongoing, 1);
-                return true;
-            }
-            catch (Exception e)
-            {
-                Log.Warning(e, "Exception thrown");
-                Interlocked.Exchange(ref _autoRead2Ongoing, 0);
+            if (ProcessRcpCommand(MessageCode.StartAutoRead2, out var responseArguments) != RcpReturnType.Success)
                 return false;
-            }
+            if (!ParseSingleByteResponsePayload(responseArguments))
+                return false;
+            return true;
         }
 
         #endregion
@@ -644,7 +611,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
         #region 4.25 Start Auto Read RSSI
 
         public bool StartAutoReadRssi(TagType tagType, byte maximumNumberOfTags, byte maximumElapsedTime,
-            ushort repeatCycle, AutoReadRssiNotificationCallback callback)
+            ushort repeatCycle)
         {
             var rc = BitConverter.GetBytes(repeatCycle).Reverse();
             var argumentPayload = new List<byte>
@@ -661,9 +628,6 @@ namespace Kliskatek.Driver.Rain.REDRCP
 
             if (!ParseSingleByteResponsePayload(responsePayload))
                 return false;
-
-            _autoReadRssiNotificationCallback = callback;
-            Interlocked.Exchange(ref _autoReadRssiOngoing, 1);
             return true;
         }
 
@@ -673,20 +637,11 @@ namespace Kliskatek.Driver.Rain.REDRCP
 
         public bool StopAutoRead2()
         {
-            try
-            {
-                if (ProcessRcpCommand(MessageCode.StopAutoRead2, out var responseArguments) != RcpReturnType.Success)
-                    return false;
-                if (!ParseSingleByteResponsePayload(responseArguments))
-                    return false;
-                Interlocked.Exchange(ref _autoRead2Ongoing, 0);
-                return true;
-            }
-            catch (Exception e)
-            {
-                Log.Warning(e, "Exception thrown");
+            if (ProcessRcpCommand(MessageCode.StopAutoRead2, out var responseArguments) != RcpReturnType.Success)
                 return false;
-            }
+            if (!ParseSingleByteResponsePayload(responseArguments))
+                return false;
+            return true;
         }
 
         #endregion
@@ -695,7 +650,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
 
         // TODO: Documentation does not show notification filed when TagRssi = True. Testing pending with real hardware
         public bool StartAutoRead2Ex(ParamAutoRead2ExMode mode, bool tagRssi, byte antPort, byte maximumNumberOfTags,
-            byte maximumElapsedTime, ushort repeatCycle, AutoRead2ExNotificationCallback callback)
+            byte maximumElapsedTime, ushort repeatCycle)
         {
             var rc = BitConverter.GetBytes(repeatCycle).Reverse();
             var argumentPayload = new List<byte>
@@ -710,11 +665,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
             if (ProcessRcpCommand(MessageCode.StartAutoRead2Ex, out var responsePayload, argumentPayload) !=
                 RcpReturnType.Success)
                 return false;
-            if (!ParseSingleByteResponsePayload(responsePayload))
-                return false;
-            _autoRead2ExNotificationCallback = callback;
-            Interlocked.Exchange(ref _autoRead2ExOngoing, 1);
-            return true;
+            return ParseSingleByteResponsePayload(responsePayload);
         }
 
         #endregion
@@ -1141,7 +1092,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
 
         #region 4.45 Get DTC Result
 
-        public bool GetDtcResult(out DtcResultResponseParameters parameters, GetDtcResultNotificationCallback callback)
+        public bool GetDtcResult(out DtcResultResponseParameters parameters)
         {
             parameters = new DtcResultResponseParameters();
             ClearReceivedCommandAnswerBuffer();
@@ -1168,9 +1119,6 @@ namespace Kliskatek.Driver.Rain.REDRCP
             parameters.DigitalTunableCapacitor2 = commandAnswer[2];
             parameters.LeakageRssi = commandAnswer[3];
             parameters.LeakageCancellationAlgorithmStateNumber = commandAnswer[4];
-
-            _getDtcResultNotificationCallback = callback;
-            Interlocked.Exchange(ref _getDtcResultOngoing, 1);
 
             return true;
         }
@@ -1210,7 +1158,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
 
         #region 4.48 Set Optimum Frequency Hopping Table
 
-        public bool SetOptimumFrequencyHoppingTable(GetDtcResultNotificationCallback callback)
+        public bool SetOptimumFrequencyHoppingTable()
         {
             if (ProcessRcpCommand(MessageCode.SetOptimumFrequencyHoppingTable, out var responseArgument) !=
                 RcpReturnType.Success)
@@ -1218,17 +1166,11 @@ namespace Kliskatek.Driver.Rain.REDRCP
             if (!ParseSingleByteResponsePayload(responseArgument))
                 return false;
 
-            Interlocked.Exchange(ref _setOptimumFrequencyHoppingTableOngoing, 1);
-            _setOptimmumFrequencyHoppingTableNotificationCallback = callback;
 
             if (!_receivedCommandAnswerBuffer.TryTake(out var stopResponseArgument,
                     Constants.RcpCommandMaxResponseTimeMs * 2))
-            {
-                Interlocked.Exchange(ref _setOptimumFrequencyHoppingTableOngoing, 0);
                 return false;
-            }
 
-            Interlocked.Exchange(ref _setOptimumFrequencyHoppingTableOngoing, 0);
             if (stopResponseArgument.Count != 2)
                 return false;
             var stopResponseCode = stopResponseArgument.First();

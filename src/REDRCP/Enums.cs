@@ -392,4 +392,15 @@
         NoResponse,
         OtherError
     }
+
+    public enum SupportedNotifications
+    {
+        ReadTypeCUii,
+        ReadTypeCUiiTid,
+        ReadTypeCUiiRssi,
+        StartAutoReadRssi,
+        ReadTypeCUiiEx2,
+        StartAutoRead2Ex,
+        GetDtcResult
+    }
 }

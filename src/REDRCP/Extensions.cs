@@ -55,5 +55,10 @@ namespace Kliskatek.Driver.Rain.REDRCP
                 Sel8 = (enableStatus & 0x80) > 0,
             };
         }
+
+        public static string RemoveHyphen(this string text)
+        {
+            return text.Replace("-", "");
+        }
     }
 }
