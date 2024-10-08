@@ -9,7 +9,7 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
         static void Main(string[] args)
         {
             Console.WriteLine("REDRCP ");
-            
+
             var reader = new REDRCP();
 
             var connectionString = JsonConvert.SerializeObject(new SerialPortConnectionParameters
@@ -20,12 +20,6 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
             if (!reader.Connect(connectionString))
                 return;
             reader.OnNotificationReceived += OnNotificationReceived;
-
-            //if (!reader.SetSystemReset())
-            //{
-            //    Console.WriteLine("Could not reset system. Stopping execution");
-            //    return;
-            //}
 
             if (reader.GetReaderInformationFirmwareVersion(out var firmwareVersion))
                 Console.WriteLine($"Firmware version = {firmwareVersion}");
@@ -61,18 +55,6 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
                     Console.WriteLine($"  * Channel {channel}");
             }
 
-
-            //FhLbtParameters tmp = new FhLbtParameters
-            //{
-            //    DwellTime = 400,
-            //    IdleTime = 100,
-            //    CarrierSenseTime = 10,
-            //    TargetRfPowerLevel = -74,
-            //    Fh = true,
-            //    Lbt = true,
-            //    Cw = false
-            //};
-            //reader.SetFhLbtParameters(tmp);
 
             if (reader.GetTxPowerLevel(out var txPowerLevel))
                 Console.WriteLine(
@@ -137,6 +119,21 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
                 case SupportedNotifications.ReadTypeCUiiTid:
                     OnReadTypeCUiiTidNotification((ReadTypeCUiiTidNotificationParameters)e.NotificationParameters);
                     break;
+                case SupportedNotifications.ReadTypeCUiiRssi:
+                    OnReadTypeCUiiRssiNotification((ReadTypeCUiiRssiNotificationParameters)e.NotificationParameters);
+                    break;
+                case SupportedNotifications.StartAutoReadRssi:
+                    OnStartAutoReadRssiNotification((StartAutoReadRssiNotificationParameters)e.NotificationParameters);
+                    break;
+                case SupportedNotifications.ReadTypeCUiiEx2:
+                    OnReadTypeCUiiEx2Notification((ReadTypeCUiiEx2NotificationParameters)e.NotificationParameters);
+                    break;
+                case SupportedNotifications.StartAutoRead2Ex:
+                    OnStartAutoRead2ExNotification((StartAutoRead2ExNotificationParameters)e.NotificationParameters);
+                    break;
+                case SupportedNotifications.GetDtcResult:
+                    OnGetDtcResult((GetDtcResultNotificationParameters)e.NotificationParameters);
+                    break;
                 default:
                     Console.WriteLine($"Notification {e.NotificationType} not supported yet");
                     break;
@@ -155,5 +152,61 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
             Console.WriteLine($" * [{parameters.Pc}] EPC = {parameters.Epc}, TID = {parameters.Tid}\n");
         }
 
+        public static void OnReadTypeCUiiRssiNotification(ReadTypeCUiiRssiNotificationParameters parameters)
+        {
+            Console.WriteLine("ReadTypeCUiiRssi notification received");
+            Console.WriteLine($" * [{parameters.Pc}] EPC = {parameters.Epc}");
+            Console.WriteLine($"    - RSSI_I {parameters.RssiI}");
+            Console.WriteLine($"    - RSSI_I {parameters.RssiQ}");
+            Console.WriteLine($"    - GAIN_I {parameters.GainI}");
+            Console.WriteLine($"    - GAIN_Q {parameters.GainQ}\n");
+        }
+
+        public static void OnStartAutoReadRssiNotification(StartAutoReadRssiNotificationParameters parameters)
+        {
+            Console.WriteLine("StartAutoReadRssi notification received");
+            if (parameters.ReadComplete)
+            {
+                Console.WriteLine(" * Read completed\n");
+            }
+            else
+            {
+                Console.WriteLine(" * Read NOT completed\n");
+            }
+        }
+
+        public static void OnReadTypeCUiiEx2Notification(ReadTypeCUiiEx2NotificationParameters parameters)
+        {
+            Console.WriteLine("ReadTypeCUiiEx2 notification received");
+            Console.WriteLine($" * [{parameters.Pc}] EPC = {parameters.Epc}");
+            Console.WriteLine($"    - RSSI {parameters.TagRssi}");
+            Console.WriteLine($"    - AntennaPort {parameters.AntennaPort}");
+            Console.WriteLine($"    - Mode {parameters.Mode}\n");
+        }
+
+        public static void OnStartAutoRead2ExNotification(StartAutoRead2ExNotificationParameters parameters)
+        {
+            Console.WriteLine("StartAutoRead2Ex notification received");
+            if (parameters.ReadComplete)
+            {
+                Console.WriteLine(" * Read completed\n");
+            }
+            else
+            {
+                Console.WriteLine(" * Read NOT completed\n");
+            }
+        }
+
+        public static void OnGetDtcResult(GetDtcResultNotificationParameters parameters)
+        {
+            Console.WriteLine("ReadTypeCUiiEx2 notification received");
+            Console.WriteLine($"    - Inductor number {parameters.InductorNumber}");
+            Console.WriteLine($"    - Digital tunable capacitor 1 {parameters.DigitalTunableCapacitor1}");
+            Console.WriteLine($"    - Digital tunable capacitor 2 {parameters.DigitalTunableCapacitor2}");
+            Console.WriteLine($"    - RSSI leakage {parameters.LeakageRssi}");
+            Console.WriteLine($"    - Leakage cancellation algorithm state number {parameters.LeakageCancellationAlgorithmStateNumber}");
+            Console.WriteLine($"    - Current channel {parameters.CurrentChannel}");
+            Console.WriteLine($"    - Operation time of leakage cancellation {parameters.LeakageCancellationOperationTime}");
+        }
     }
 }
