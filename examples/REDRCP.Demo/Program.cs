@@ -55,7 +55,6 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
                     Console.WriteLine($"  * Channel {channel}");
             }
 
-
             if (reader.GetTxPowerLevel(out var txPowerLevel))
                 Console.WriteLine(
                     $"Reader power levels: current level {txPowerLevel.CurrentTxPower}, min level {txPowerLevel.MinTxPower}, max level {txPowerLevel.MaxTxPower}");
@@ -94,19 +93,6 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
 
             if (!reader.Disconnect())
                 Console.WriteLine("Serial port not disconnected");
-        }
-
-        public static void AutoRead2DelegateMethod(string pc, string epc)
-        {
-            Console.WriteLine($"EPC = {epc}, PC = {pc}");
-        }
-
-        public static void AutoRead2ExDelegateMethod(ParamAutoRead2ExMode mode, bool tagRssi, byte antPort,
-            string pc, string epc, byte rssiI, byte rssiQ, byte gainI, byte gainQ)
-        {
-            Console.WriteLine($"[{pc}] EPC = {epc}");
-            if (tagRssi)
-                Console.WriteLine($"RSSI_I = {rssiI}, RSSI_Q = {rssiQ}, GAIN_I = {gainI}, GAIN_Q = {gainQ}");
         }
 
         public static void OnNotificationReceived(object sender, NotificationEventArgs e)
