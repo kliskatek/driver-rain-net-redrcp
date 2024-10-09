@@ -8,16 +8,24 @@
     <RootNamespace>Kliskatek.Driver.Rain.REDRCP</RootNamespace>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>Driver.Rain.REDRCP</Title>
-    <Version>0.1.0-alpha</Version>
-    <Authors>Aritz Alonso, Ibon Zalbide</Authors>
+    <Version>0.2.0-alpha</Version>
+    <Authors>aritz.alonso, Ibon Zalbide</Authors>
     <Company>Kliskatek</Company>
     <Product>Kliskatek.Driver.Rain</Product>
-    <Description>This library provides .NET methods to interface with the REDRCP protocol</Description>
+    <Description>This library provides .NET high level methods that give access to RED RCP protocol commands, responses and notifications.</Description>
     <Copyright>Copyright © 2024 Kliskatek</Copyright>
     <PackageProjectUrl>www.kliskatek.com</PackageProjectUrl>
     <RepositoryUrl>https://github.com/kliskatek/driver-rain-net-redrcp</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />

@@ -1,5 +1,4 @@
-﻿using System.Text.Json.Serialization;
-using Kliskatek.Driver.Rain.REDRCP.Transports;
+﻿using Kliskatek.Driver.Rain.REDRCP.Transports;
 using Newtonsoft.Json;
 
 namespace Kliskatek.Driver.Rain.REDRCP.Demo
@@ -12,89 +11,68 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
 
             var reader = new REDRCP();
 
-            var connectionString = JsonConvert.SerializeObject(new SerialPortConnectionParameters
+            string connectionString = JsonConvert.SerializeObject(new SerialPortConnectionParameters
             {
-                PortName = "COM4"
+                PortName = "COM4",
+                BaudRate = 115200
             });
 
-            //if (!reader.Connect(connectionString))
-            //    return;
-            if (!reader.Connect("COM4"))
+            if (!reader.Connect(connectionString))
                 return;
+
             reader.NewNotificationReceived += NewNotificationReceived;
+            reader.NewErrorReceived += NewErrorReceived;
+            
+            reader.GetRegion(out var region);
+            Console.WriteLine($"Reader region : {region}");
 
-            if (reader.GetReaderInformationFirmwareVersion(out var firmwareVersion))
-                Console.WriteLine($"Firmware version = {firmwareVersion}");
-
-            if (reader.GetReaderInformationReaderModel(out var modelName))
-                Console.WriteLine($"Model name = {modelName}");
-
-            if (reader.GetReaderInformationManufacturer(out var manufacturer))
-                Console.WriteLine($"Manufacturer = {manufacturer}");
-
-            if (reader.GetReaderInformationDetails(out var details))
-                Console.WriteLine("Reader details obtained");
-
-            if (reader.GetRegion(out var region))
-                Console.WriteLine($"Reader region : {region}");
-
-            if (reader.GetTypeCaiQueryParameters(out var queryParameters))
-                Console.WriteLine("Query parameters obtained");
-
-            if (reader.GetRfChannel(out var rfChannel))
-                Console.WriteLine($"CN = {rfChannel.ChannelNumber}, CNO = {rfChannel.ChannelNumberOffset}");
-
-            if (reader.GetFhLbtParameters(out var fhLbtParameters))
-                Console.WriteLine("FH and LBT parameters obtained");
-
-            //if (reader.ReadTypeCTagData("E2003411B802011526370494", ParamMemoryBank.Reserved, 0, 4, out var readData, 1))
-            //    Console.WriteLine($"Read data : {readData}");
-
-            if (reader.GetFrequencyHoppingTable(out var frequencyHoppingTable))
+            // Example Read procedure
+            string epc = "1234567890ABCDEF";
+            ushort startAddress = 5;
+            ushort wordCount = 2;
+            switch (reader.ReadTypeCTagData(epc, ParamMemoryBank.User, startAddress, wordCount, out var readData))
             {
-                Console.WriteLine("Frequency hopping table:");
-                foreach (var channel in frequencyHoppingTable)
-                    Console.WriteLine($"  * Channel {channel}");
+                case RcpResultType.Success:
+                    Console.WriteLine($"Tag data : {readData}");
+                    break;
+                case RcpResultType.ReaderError:
+                    // Option 1: Get last error code recorded by reader
+                    var lastErrorCode = reader.GetLastError();
+                    // Option 2: Get last error code recorded by reader associated with RCP command
+                    var rcpCode = MessageCode.ReadTypeCTagData;
+                    if (reader.TryGetCommandErrorCode(rcpCode, out var errorCode))
+                        Console.WriteLine($"RCP command {rcpCode} returned error [{(byte)errorCode}] {errorCode}");
+                    // User error handling
+                    break;
+                case RcpResultType.NoResponse:
+                    // Timeout condition during RCP protocol command processing
+                    break;
+                case RcpResultType.OtherError:
+                    // Other errors conditions that are not treated as RCP protocol failures
+                    break;
             }
 
-            if (reader.GetTxPowerLevel(out var txPowerLevel))
-                Console.WriteLine(
-                    $"Reader power levels: current level {txPowerLevel.CurrentTxPower}, min level {txPowerLevel.MinTxPower}, max level {txPowerLevel.MaxTxPower}");
-
-            if (reader.GetModulationMode(out var modulationMode))
-                Console.WriteLine(
-                    $"Modulation mode: BLF {modulationMode.BackscatterLinkFrequency}, RxMod {modulationMode.RxMod}, DR {modulationMode.Dr}");
-
-            if (reader.GetAntiCollisionMode(out var anticollisionMode))
-                Console.WriteLine(
-                    $"Anti-collision mode : mode {anticollisionMode.Mode}, Q Start {anticollisionMode.QStart}, Q Max {anticollisionMode.QMax}, Q Min {anticollisionMode.QMin}");
-
-
-            for (int i = 0; i < 1; i++)
+            // Example write procedure
+            string dataToWrite = "FEDCBA0987654321";
+            switch (reader.WriteTypeCTagData(epc, ParamMemoryBank.User, startAddress, dataToWrite))
             {
-                reader.StartAutoRead2();
-
-                Thread.Sleep(2000);
-
-                reader.StopAutoRead2();
-
-                Thread.Sleep(2000);
+                case RcpResultType.Success:
+                    Console.WriteLine("Tag written successfully");
+                    break;
             }
 
-            //byte maxElapsedTimeS = 5;
-            //if (reader.StartAutoRead2Ex(ParamAutoRead2ExMode.EpcOnly, false, 1, 0, 0, 100, AutoRead2ExDelegateMethod))
-            //{
-            //    Console.WriteLine("StartAutoRead2Ex started");
-            //    Thread.Sleep((int)maxElapsedTimeS * 1100);
-            //}
-
-            //if (reader.GetFrequencyInformation(out var frequencyInformation))
-            //    Console.WriteLine(
-            //        $"Frequency Information: Spacing {frequencyInformation.Spacing}, Start Frequency {frequencyInformation.StartFreq}, Channel {frequencyInformation.Channel}, RF Preset {frequencyInformation.RfPreset}");
-
+            // Example inventory procedure
+            reader.StartAutoRead2();
+            Thread.Sleep(2000);
+            reader.StopAutoRead2();
 
             if (!reader.Disconnect())
-                Console.WriteLine("Serial port not disconnected");
+                Console.WriteLine("Reader is not disconnected");
+        }
+
+        public static void NewErrorReceived(object sender, ErrorNotificationEventArgs e)
+        {
+            Console.WriteLine($"Command {e.CommandCode} returned an error: [{(byte)e.ErrorCode}] {e.CommandCode}");
         }
 
         public static void NewNotificationReceived(object sender, NotificationEventArgs e)
