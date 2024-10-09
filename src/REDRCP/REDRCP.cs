@@ -87,57 +87,48 @@ namespace Kliskatek.Driver.Rain.REDRCP
         
         #region 4.2 Get Reader Information
 
-        public bool GetReaderInformation(byte commandArgument, out List<byte> responseArguments)
+        public RcpReturnType GetReaderInformation(byte commandArgument, out List<byte> responseArguments)
         {
             responseArguments = new List<byte>();
-            if (ProcessRcpCommand(MessageCode.GetReaderInformation, out responseArguments, 
-                    [commandArgument]) != RcpReturnType.Success)
-                return false;
-            return (responseArguments.Count > 0);
+            return ProcessRcpCommand(MessageCode.GetReaderInformation, out responseArguments, [commandArgument]);
         }
 
-        public bool GetReaderInformationReaderModel(out string model)
+        public RcpReturnType GetReaderInformationReaderModel(out string model)
         {
             model = string.Empty;
             var modelBinary = new List<byte>();
-            if (!GetReaderInformation((byte)ReaderInfoType.Model, out modelBinary))
-                return false;
-            if (modelBinary.Count == 0)
-                return false;
-            model = System.Text.Encoding.ASCII.GetString(modelBinary.ToArray());
-            return true;
+            var returnValue = GetReaderInformation((byte)ReaderInfoType.Model, out modelBinary);
+            if (returnValue == RcpReturnType.Success)
+                model = System.Text.Encoding.ASCII.GetString(modelBinary.ToArray());
+            return returnValue;
         }
         
-        public bool GetReaderInformationFirmwareVersion(out string firmwareVersion)
+        public RcpReturnType GetReaderInformationFirmwareVersion(out string firmwareVersion)
         {
             firmwareVersion = string.Empty;
-            if (!GetReaderInformation((byte)ReaderInfoType.FwVersion, out var firmwareBinary))
-                return false;
-            if (firmwareBinary.Count == 0)
-                return false;
-            firmwareVersion = System.Text.Encoding.ASCII.GetString(firmwareBinary.ToArray())
-                .Replace("\0", string.Empty);
-            return true;
+            var returnValue = GetReaderInformation((byte)ReaderInfoType.FwVersion, out var firmwareBinary);
+            if (returnValue == RcpReturnType.Success)
+                firmwareVersion = System.Text.Encoding.ASCII.GetString(firmwareBinary.ToArray())
+                    .Replace("\0", string.Empty);
+            return returnValue;
         }
 
-        public bool GetReaderInformationManufacturer(out string manufacturer)
+        public RcpReturnType GetReaderInformationManufacturer(out string manufacturer)
         {
             manufacturer = string.Empty;
-            if (!GetReaderInformation((byte)ReaderInfoType.Manufacturer, out var manufacturerBinary))
-                return false;
-            if (manufacturerBinary.Count == 0)
-                return false;
-            manufacturer = System.Text.Encoding.ASCII.GetString(manufacturerBinary.ToArray());
-            return true;
+            var returnValue = GetReaderInformation((byte)ReaderInfoType.Manufacturer, out var manufacturerBinary);
+            if (returnValue == RcpReturnType.Success)
+                manufacturer = System.Text.Encoding.ASCII.GetString(manufacturerBinary.ToArray());
+            return returnValue;
         }
 
-        public bool GetReaderInformationDetails(out ReaderInformationDetails details)
+        public RcpReturnType GetReaderInformationDetails(out ReaderInformationDetails details)
         {
             details = new ReaderInformationDetails();
-            if (!GetReaderInformation((byte)ReaderInfoType.Detail, out var detailBinary))
-                return false;
-            if (detailBinary.Count < Constants.ReaderInformationDetailBinaryLength)
-                return false;
+            var returnValue = GetReaderInformation((byte)ReaderInfoType.Detail, out var detailBinary);
+            if (returnValue != RcpReturnType.Success)
+                return returnValue;
+
             var detailBinaryArray = detailBinary.ToArray();
             // Parse details
             details.Region = (Region)detailBinaryArray[Constants.RidRegionOffset];
@@ -169,42 +160,44 @@ namespace Kliskatek.Driver.Rain.REDRCP
             details.Modulation = (ParamModulation)detailBinaryArray[Constants.RidModulationOffset];
             details.Dr = (ParamDr)detailBinaryArray[Constants.RidDrOffset];
 
-            return true;
+            return RcpReturnType.Success;
         }
         #endregion
 
         #region 4.3 Get Region
 
-        public bool GetRegion(out Region region)
+        public RcpReturnType GetRegion(out Region region)
         {
             region = Region.Europe;
-            if (ProcessRcpCommand(MessageCode.GetRegion, out var responseArguments) != RcpReturnType.Success)
-                return false;
+            var returnValue = ProcessRcpCommand(MessageCode.GetRegion, out var responseArguments);
+            if (returnValue != RcpReturnType.Success)
+                return returnValue;
             if (responseArguments.Count != 1)
-                return false;
+                return RcpReturnType.OtherError;
             region = (Region)responseArguments[Constants.ResponseArgOffset];
-            return true;
+            return RcpReturnType.Success;
         }
 
         #endregion
 
         #region 4.4 Set Region
 
-        public bool SetRegion(Region region)
+        public RcpReturnType SetRegion(Region region)
         {
-            if (ProcessRcpCommand(MessageCode.SetRegion, out var responseArguments, [(byte)region]) !=
-                RcpReturnType.Success)
-                return false;
+            var returnValue = ProcessRcpCommand(MessageCode.SetRegion, out var responseArguments, [(byte)region]);
+            if (returnValue != RcpReturnType.Success)
+                return returnValue;
             return ParseSingleByteResponsePayload(responseArguments);
         }
         #endregion
 
         #region 4.5 Set System Reset
 
-        public bool SetSystemReset()
+        public RcpReturnType SetSystemReset()
         {
-            if (ProcessRcpCommand(MessageCode.SetSystemReset, out var responseArguments) != RcpReturnType.Success)
-                return false;
+            var returnValue = ProcessRcpCommand(MessageCode.SetSystemReset, out var responseArguments);
+            if (returnValue != RcpReturnType.Success)
+                return returnValue;
             return ParseSingleByteResponsePayload(responseArguments);
         }
 
@@ -1296,7 +1289,6 @@ namespace Kliskatek.Driver.Rain.REDRCP
                         throw new ArgumentException($"Invalid command error flag {commandErrorFlag}");
 
                 }
-
             }
             //if (commandResponseCode == ((byte)MessageCode.CommandFailure))
             //{
@@ -1323,6 +1315,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
             //    responsePayload = commandAnswer;
             //    return RcpReturnType.ReaderError;
             //}
+
             Log.Warning($"RCP message code error. Expected {(byte)messageCode}, received {commandResponseCode}");
             return RcpReturnType.OtherError;
         }
@@ -1337,11 +1330,13 @@ namespace Kliskatek.Driver.Rain.REDRCP
             return (new ArraySegment<T>(inputArray)).Slice(startIndex, inputArray.Length - startIndex).ToArray();
         }
 
-        private bool ParseSingleByteResponsePayload(List<byte> responsePayload)
+        private RcpReturnType ParseSingleByteResponsePayload(List<byte> responsePayload)
         {
             if (responsePayload.Count != 1)
-                return false;
-            return (responsePayload[Constants.ResponseArgOffset] == Constants.Success);
+                return RcpReturnType.OtherError;
+            return (responsePayload[Constants.ResponseArgOffset] == Constants.Success)
+                ? RcpReturnType.Success
+                : RcpReturnType.OtherError;
         }
 
         private int GetEpcByteLengthFromPc(ushort pc)

@@ -11,6 +11,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
     {
         private readonly object _lockErrorDictionary = new();
         private ConcurrentDictionary<MessageCode, ErrorCode> _lastErrorDictionary = new();
+        private ErrorCode _lastError = ErrorCode.OtherError;
 
         private void AddUpdateMessageCodeError(MessageCode messageCode, ErrorCode errorCode)
         {
@@ -18,6 +19,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
             {
                 _lastErrorDictionary.Remove(messageCode, out var _);
                 _lastErrorDictionary.TryAdd(messageCode, errorCode);
+                _lastError = errorCode;
             }
         }
 
@@ -30,6 +32,11 @@ namespace Kliskatek.Driver.Rain.REDRCP
                     return false;
                 return false;
             }
+        }
+
+        public ErrorCode GetLastError()
+        {
+            return _lastError;
         }
     }
 }
