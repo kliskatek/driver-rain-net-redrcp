@@ -17,7 +17,9 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
                 PortName = "COM4"
             });
 
-            if (!reader.Connect(connectionString))
+            //if (!reader.Connect(connectionString))
+            //    return;
+            if (!reader.Connect("COM4"))
                 return;
             reader.OnNotificationReceived += OnNotificationReceived;
 

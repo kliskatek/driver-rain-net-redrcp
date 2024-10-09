@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using Serilog;
 
 namespace Kliskatek.Driver.Rain.REDRCP
 {
@@ -23,8 +24,36 @@ namespace Kliskatek.Driver.Rain.REDRCP
                 switch ((MessageType)_rcpMessageType)
                 {
                     case MessageType.Response:
-                        _rcpPayloadBuffer.Insert(0, _rcpCode);
-                        _receivedCommandAnswerBuffer.Add(_rcpPayloadBuffer);
+                        // Check if response code is "Command Failure" 
+                        if (_rcpCode == (byte)MessageCode.CommandFailure)
+                        {
+                            // If response code is "Command Failure", handle error message
+                            if (_rcpPayloadBuffer.Count != 3)
+                                return;
+                            try
+                            {
+                                var commandCode = (MessageCode)_rcpPayloadBuffer[1];
+                                var errorCode = (ErrorCode)_rcpPayloadBuffer[2];
+                                AddUpdateMessageCodeError(commandCode, errorCode);
+                                _receivedCommandAnswerBuffer.Add([
+                                    (byte)commandCode,
+                                    (byte)ErrorFlag.Error,
+                                    (byte)errorCode
+                                ]);
+                            }
+                            catch (Exception e)
+                            {
+                                Log.Warning(e, "Exception thrown while decoding command failure");
+                            }
+                        }
+                        else
+                        {
+                            // If response code is not "Command Failure", 
+                            _rcpPayloadBuffer.Insert(0, (byte)ErrorFlag.NoError);
+                            _rcpPayloadBuffer.Insert(0, _rcpCode);
+                            _receivedCommandAnswerBuffer.Add(_rcpPayloadBuffer);
+                        }
+
                         break;
                     case MessageType.Notification:
                         OnNewTransportNotificationReceived();

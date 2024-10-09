@@ -15,12 +15,7 @@
         GetRegion = 0x06,
         SetRegion = 0x07,
         SetSystemReset = 0x08,
-        GetSelectionEnable = 0x8E,
-        SetSelectionEnable = 0x8F,
-        GetMultiAntennaSequence = 0x99,
-        SetMultiAntennaSequence = 0x9A,
-        GetSelection = 0xAE,
-        SetSelection = 0xAF,
+
         GetTypeQueryRelatedParameters = 0x0D,
         SetTypeQueryRelatedParameters = 0x0E,
         GetRfChannel = 0x11,
@@ -56,17 +51,28 @@
         WriteTypeCTagData = 0x46,
         BlockWriteTypeCTagData = 0x47,
         BlockEraseTypeCTagData = 0x48,
+
         BlockPermalockTypeCTag = 0x83,
         KillRecomTypeCTag = 0x65,
         LockTypeCTag = 0x82,
+
+        GetSelectionEnable = 0x8E,
+        SetSelectionEnable = 0x8F,
+        GetMultiAntennaSequence = 0x99,
+        SetMultiAntennaSequence = 0x9A,
+
         AntennaCheck = 0xAC,
+
+        GetSelection = 0xAE,
+        SetSelection = 0xAF,
+
         GetTemperature = 0xB7,
         GetRssi = 0xC5,
         ScanRssi = 0xC6,
         GetDtcResult = 0xCA,
         UpdateRegistry = 0xD2,
         GetRegistryItem = 0xD4,
-        CommandFailure = 0xFF,
+
         SetOptimumFrequencyHoppingTable = 0xE4,
         GetFrequencyHoppingMode = 0xE5,
         SetFrequencyHoppingMode = 0xE6,
@@ -74,7 +80,9 @@
         SetTxLeakageRsiiLevelSmartHoppingMode = 0xE8,
         SmartReadFastLeakageCal = 0xEC,
         RequestFastLeakageCal = 0xED,
-        Error = 0xFF
+
+        CommandFailure = 0xFF,
+        //Error = 0xFF
     }
 
     public enum ErrorCode
@@ -402,5 +410,11 @@
         ReadTypeCUiiEx2,
         StartAutoRead2Ex,
         GetDtcResult
+    }
+
+    public enum ErrorFlag
+    {
+        NoError = 0x00,
+        Error = 0xFF
     }
 }

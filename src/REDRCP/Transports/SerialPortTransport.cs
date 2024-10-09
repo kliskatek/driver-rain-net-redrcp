@@ -15,8 +15,16 @@ namespace Kliskatek.Driver.Rain.REDRCP.Transports
             try
             {
                 _serialPort = new SerialPort();
-                var connectionParameters = JsonConvert.DeserializeObject<SerialPortConnectionParameters>(connectionString) 
-                            ?? throw new InvalidOperationException("Can not convert connectionString to SerialPortConnectionParameters object");
+                SerialPortConnectionParameters connectionParameters;
+                try
+                {
+                    connectionParameters =
+                        JsonConvert.DeserializeObject<SerialPortConnectionParameters>(connectionString);
+                }
+                catch (Exception e)
+                {
+                    connectionParameters = new SerialPortConnectionParameters { PortName = connectionString };
+                }
                 _serialPort.PortName = connectionParameters.PortName;
                 _serialPort.BaudRate = connectionParameters.BaudRate;
                 _serialPort.Parity = connectionParameters.Parity;

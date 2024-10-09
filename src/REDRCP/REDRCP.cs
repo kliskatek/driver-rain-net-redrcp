@@ -5,7 +5,9 @@ using Serilog;
 namespace Kliskatek.Driver.Rain.REDRCP
 {
     /// <summary>
-    /// Provides higher level access to common RED RCP functionality. Works with serial port connection.
+    /// Class <c>REDRCP</c> provides high level methods that give access to  RED RCP protocol commands,
+    /// responses and notifications.
+    /// <see href="https://www.phychips.com/upload/board/Reader_Control_Protocol_User_Manual.pdf"/>
     /// </summary>
     public partial class REDRCP
     {
@@ -19,7 +21,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
                 switch (busType)
                 {
                     case SupportedBuses.SerialPort:
-                        _communicationTransport = (ITransport)new SerialPortTransport();
+                        _communicationTransport = new SerialPortTransport();
                         break;
                     default:
                         throw new ArgumentException($"Bus type {busType} is not supported");
@@ -48,7 +50,24 @@ namespace Kliskatek.Driver.Rain.REDRCP
             // Check if connection string can be parsed into SerialPortConnectionParameters
             if (connectionString.TryParseJson<SerialPortConnectionParameters>())
                 return SupportedBuses.SerialPort;
+            if (IsSerialBus(connectionString))
+                return SupportedBuses.SerialPort;
             throw new ArgumentException("Connection string can not be parsed into a known format");
+        }
+
+        private bool IsSerialBus(string connectionString)
+        {
+            // Windows
+            if (connectionString.ToUpper().StartsWith("COM"))
+            {
+                if (int.TryParse(connectionString.Substring(3), out var _))
+                    return true;
+            }
+            // Linux & macos
+            if (connectionString.StartsWith("/dev/tty"))
+                return true;
+
+            return false;
         }
 
         public bool Disconnect()
@@ -988,7 +1007,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
             {
                 case (byte)MessageCode.AntennaCheck:
                     return ParseSingleByteResponsePayload(commandAnswer);
-                case (byte)MessageCode.Error:
+                case (byte)MessageCode.CommandFailure:
                     if (commandAnswer.Count != 3)
                         return false;
                     antennaError.IsFailure = true;
@@ -1259,27 +1278,51 @@ namespace Kliskatek.Driver.Rain.REDRCP
             // Extract command response code and leave commandAnswer as the response payload
             var commandResponseCode = commandAnswer.First();
             commandAnswer.RemoveAt(0);
+            var commandErrorFlag = (ErrorFlag)commandAnswer.First();
+            commandAnswer.RemoveAt(0);
+
                 
             if (commandResponseCode == (byte)messageCode)
             {
                 // Command response
                 responsePayload = commandAnswer;
-                return RcpReturnType.Success;
-            }
-            if (commandResponseCode == ((byte)MessageCode.CommandFailure))
-            {
-                // Command failure
-                Log.Warning($"Command {messageCode} returned an error");
-                if (commandAnswer.Count == 0)
-                    Log.Warning(" * No error details available (payload length == 0)");
-                else
+                switch (commandErrorFlag)
                 {
-                    var errorByte = commandAnswer.First();
-                    Log.Warning($" * Error code : {errorByte} ({(ErrorCode)errorByte})");
+                    case ErrorFlag.NoError:
+                        return RcpReturnType.Success;
+                    case ErrorFlag.Error:
+                        return RcpReturnType.ReaderError;
+                    default:
+                        throw new ArgumentException($"Invalid command error flag {commandErrorFlag}");
+
                 }
-                responsePayload = commandAnswer;
-                return RcpReturnType.ReaderError;
+
             }
+            //if (commandResponseCode == ((byte)MessageCode.CommandFailure))
+            //{
+            //    // Command failure
+            //    Log.Warning($"Command {messageCode} returned an error");
+            //    if (commandAnswer.Count != 3)
+            //    {
+            //        Log.Warning($" * Invalid error payload length. Expected 3, received {commandAnswer.Count}");
+            //    }
+            //    else
+            //    {
+            //        var errorCommandCode = commandAnswer[1];
+            //        if (errorCommandCode != (byte)messageCode)
+            //        {
+            //            Log.Warning($" * Error command code does not match command code. Expected {(byte)messageCode}, received {errorCommandCode}");
+            //        }
+            //        else
+            //        {
+            //            var errorCode = commandAnswer.Last();
+            //            Log.Warning($" * Error code : {errorCode} ({(ErrorCode)errorCode}");
+            //        }
+            //    }
+
+            //    responsePayload = commandAnswer;
+            //    return RcpReturnType.ReaderError;
+            //}
             Log.Warning($"RCP message code error. Expected {(byte)messageCode}, received {commandResponseCode}");
             return RcpReturnType.OtherError;
         }
