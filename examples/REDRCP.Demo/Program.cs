@@ -21,7 +21,7 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
             //    return;
             if (!reader.Connect("COM4"))
                 return;
-            reader.OnNotificationReceived += OnNotificationReceived;
+            reader.NewNotificationReceived += NewNotificationReceived;
 
             if (reader.GetReaderInformationFirmwareVersion(out var firmwareVersion))
                 Console.WriteLine($"Firmware version = {firmwareVersion}");
@@ -97,7 +97,7 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
                 Console.WriteLine("Serial port not disconnected");
         }
 
-        public static void OnNotificationReceived(object sender, NotificationEventArgs e)
+        public static void NewNotificationReceived(object sender, NotificationEventArgs e)
         {
             switch (e.NotificationType)
             {

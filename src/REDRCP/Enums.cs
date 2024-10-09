@@ -393,7 +393,7 @@
         Crc16L = 8
     }
 
-    public enum RcpReturnType
+    public enum RcpResultType
     {
         Success,
         ReaderError,
