@@ -8,6 +8,8 @@ namespace Kliskatek.Driver.Rain.REDRCP
         private readonly BlockingCollection<List<byte>> _receivedCommandAnswerBuffer = new();
         private readonly object _lockRxData = new();
 
+        public event EventHandler<ErrorNotificationEventArgs> NewErrorReceived;
+
         private void ClearReceivedCommandAnswerBuffer()
         {
             while (_receivedCommandAnswerBuffer.TryTake(out _)) { }
@@ -40,6 +42,13 @@ namespace Kliskatek.Driver.Rain.REDRCP
                                     (byte)ErrorFlag.Error,
                                     (byte)errorCode
                                 ]);
+                                NewErrorReceived?.Invoke(
+                                    this,
+                                    new ErrorNotificationEventArgs
+                                    {
+                                        ErrorCode = errorCode,
+                                        CommandCode = commandCode
+                                    });
                             }
                             catch (Exception e)
                             {

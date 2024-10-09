@@ -4,10 +4,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
 {
     public partial class REDRCP
     {
-        /// <summary>
-        /// Can generate A, B or C
-        /// </summary>
-        public event EventHandler<NotificationEventArgs> OnNotificationReceived;
+        public event EventHandler<NotificationEventArgs> NewNotificationReceived;
 
         private void OnNewTransportNotificationReceived()
         {
@@ -50,7 +47,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
             parameters.Pc = BitConverter.ToString(payloadByteArray.GetArraySlice(0, sizeof(UInt16))).RemoveHyphen();
             if (_rcpPayloadBuffer.Count > 2)
                 parameters.Epc = BitConverter.ToString(payloadByteArray.GetArraySlice(2)).RemoveHyphen();
-            OnNotificationReceived?.Invoke(this,
+            NewNotificationReceived?.Invoke(this,
                 new NotificationEventArgs
                 {
                     NotificationType = SupportedNotifications.ReadTypeCUii,
@@ -83,7 +80,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
                             .RemoveHyphen();
                     break;
             }
-            OnNotificationReceived?.Invoke(this, 
+            NewNotificationReceived?.Invoke(this, 
                 new NotificationEventArgs
                 {
                     NotificationType = SupportedNotifications.ReadTypeCUiiTid,
@@ -111,7 +108,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
             parameters.RssiQ = payload[pointer++];
             parameters.GainI = payload[pointer++];
             parameters.GainQ = payload[pointer++];
-            OnNotificationReceived?.Invoke(this,
+            NewNotificationReceived?.Invoke(this,
                 new NotificationEventArgs
                 {
                     NotificationType = SupportedNotifications.ReadTypeCUiiRssi,
@@ -127,7 +124,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
                 return;
             var parameters = new StartAutoReadRssiNotificationParameters();
             parameters.ReadComplete = true;
-            OnNotificationReceived?.Invoke(this,
+            NewNotificationReceived?.Invoke(this,
                 new NotificationEventArgs
                 {
                     NotificationType = SupportedNotifications.StartAutoReadRssi,
@@ -152,7 +149,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
             parameters.Mode = (ParamAutoRead2ExMode)payload[0];
             parameters.TagRssi = payload[1];
             parameters.AntennaPort = payload[2];
-            OnNotificationReceived?.Invoke(this,
+            NewNotificationReceived?.Invoke(this,
                 new NotificationEventArgs
                 {
                     NotificationType = SupportedNotifications.ReadTypeCUiiEx2,
@@ -170,7 +167,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
             {
                 ReadComplete = true
             };
-            OnNotificationReceived?.Invoke(this,
+            NewNotificationReceived?.Invoke(this,
                 new NotificationEventArgs
                 {
                     NotificationType = SupportedNotifications.StartAutoRead2Ex,
@@ -192,7 +189,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
             parameters.LeakageCancellationAlgorithmStateNumber = payload[arrayPointer++];
             parameters.CurrentChannel = payload[arrayPointer++];
             parameters.LeakageCancellationOperationTime = payload[arrayPointer++];
-            OnNotificationReceived?.Invoke(this,
+            NewNotificationReceived?.Invoke(this,
                 new NotificationEventArgs
                 {
                     NotificationType = SupportedNotifications.GetDtcResult,

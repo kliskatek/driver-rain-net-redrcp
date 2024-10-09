@@ -1,5 +1,11 @@
 ﻿namespace Kliskatek.Driver.Rain.REDRCP
 {
+    public class ErrorNotificationEventArgs : EventArgs
+    {
+        public ErrorCode ErrorCode { get; set; }
+        public MessageCode CommandCode { get; set; }
+    }
+
     public class NotificationEventArgs : EventArgs
     {
         public SupportedNotifications NotificationType { get; set; }
