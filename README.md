@@ -26,7 +26,7 @@ Provides high level methods that give access to RED [Reader Control Protocol (RC
 The library is installed from [NuGet](https://www.nuget.org/packages/Kliskatek.Driver.Rain.REDRCP)
 
 ```
-dotnet add package Kliskatek.Driver.Rain.REDRCP
+dotnet add package REDRCP
 ```
 
 ## Usage
