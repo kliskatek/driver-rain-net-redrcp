@@ -7,18 +7,19 @@
     <AssemblyName>Kliskatek.Driver.Rain.REDRCP</AssemblyName>
     <RootNamespace>Kliskatek.Driver.Rain.REDRCP</RootNamespace>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Title>Driver.Rain.REDRCP</Title>
-    <Version>0.2.0-alpha</Version>
-    <Authors>aritz.alonso, Ibon Zalbide</Authors>
+    <Title>A library that provides wraps RED Reader Control Protocol (RCP) commands, responses and notifications.</Title>
+    <Version>0.9.0-alpha</Version>
+    <Authors>aritz.alonso.kliskatek, ibon.zalbide</Authors>
     <Company>Kliskatek</Company>
     <Product>Kliskatek.Driver.Rain</Product>
-    <Description>This library provides .NET high level methods that give access to RED RCP protocol commands, responses and notifications.</Description>
+    <Description>This library provides .NET wrappers that give access to RED RCP protocol commands, responses and notifications.</Description>
     <Copyright>Copyright © 2024 Kliskatek</Copyright>
     <PackageProjectUrl>www.kliskatek.com</PackageProjectUrl>
     <RepositoryUrl>https://github.com/kliskatek/driver-rain-net-redrcp</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageId>REDRCP</PackageId>
   </PropertyGroup>
 
   <ItemGroup>
