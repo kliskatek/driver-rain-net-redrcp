@@ -1,7 +1,7 @@
 # driver-rain-net-REDRCP
 
-![NuGet Version](https://img.shields.io/nuget/v/Kliskatek.Driver.Rain.REDRCP)
-[![NuGet Downloads](https://img.shields.io/nuget/dt/Kliskatek.Driver.Rain.REDRCP.svg)](https://www.nuget.org/packages/Kliskatek.Driver.Rain.REDRCP/)
+![NuGet Version](https://img.shields.io/nuget/v/REDRCP)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/REDRCP.svg)](https://www.nuget.org/packages/REDRCP/)
 
 Provides high level methods that give access to RED [Reader Control Protocol (RCP)](https://www.phychips.com/upload/board/Reader_Control_Protocol_User_Manual.pdf)  commands, responses and notifications.
 
