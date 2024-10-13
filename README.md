@@ -1,4 +1,4 @@
-# driver-rain-net-REDRCP
+# REDRCP
 
 ![NuGet Version](https://img.shields.io/nuget/v/REDRCP)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/REDRCP.svg)](https://www.nuget.org/packages/REDRCP/)
@@ -23,7 +23,7 @@ Provides high level methods that give access to RED [Reader Control Protocol (RC
 
 ## Installation
 
-The library is installed from [NuGet](https://www.nuget.org/packages/Kliskatek.Driver.Rain.REDRCP)
+The library is installed from [NuGet](https://www.nuget.org/packages/REDRCP)
 
 ```
 dotnet add package REDRCP
@@ -279,5 +279,5 @@ switch (reader.WriteTypeCTagData(epc, ParamMemoryBank.User, startAddress, dataTo
 
 ## License
 
-driver-rain-net-REDRCP is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
+REDRCP is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
 
