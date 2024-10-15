@@ -555,12 +555,31 @@ namespace Kliskatek.Driver.Rain.REDRCP
 
         public RcpResultType SetAntiCollisionMode(AntiCollisionModeParameters antiCollisionMode)
         {
-            List<byte> argumentPayload = 
-            [
-                (byte)antiCollisionMode.Mode,
-                antiCollisionMode.QStart,
-                antiCollisionMode.QMax,
-                antiCollisionMode.QMin];
+            //List<byte> argumentPayload = 
+            //[
+            //    (byte)antiCollisionMode.Mode,
+            //    antiCollisionMode.QStart,
+            //    antiCollisionMode.QMax,
+            //    antiCollisionMode.QMin];
+            //argumentPayload =
+            //[
+            //    (byte)antiCollisionMode.Mode,
+            //    antiCollisionMode.QStart
+            //];
+            List<byte> argumentPayload = [(byte)0x00];
+            switch (antiCollisionMode.Mode)
+            {
+                case AntiCollisionMode.Manual:
+                    argumentPayload.Add(antiCollisionMode.QStart);
+                    argumentPayload.Add(antiCollisionMode.QMax);
+                    argumentPayload.Add(antiCollisionMode.QMin);
+                    break;
+                default:
+                    argumentPayload.Add(antiCollisionMode.QStart);
+                    argumentPayload.Add(antiCollisionMode.QStart);
+                    argumentPayload.Add(antiCollisionMode.QStart);
+                    break;
+            }
             var rcpResult =
                 ProcessRcpCommand(MessageCode.SetAntiCollisionMode, out var responsePayload, argumentPayload);
             return (rcpResult == RcpResultType.Success) ? ParseSingleByteResponsePayload(responsePayload) : rcpResult;

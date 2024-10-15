@@ -22,6 +22,14 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
 
             reader.NewNotificationReceived += NewNotificationReceived;
             reader.NewErrorReceived += NewErrorReceived;
+
+            //var antiCollisionResult = reader.SetAntiCollisionMode(new AntiCollisionModeParameters
+            //{
+            //    Mode = AntiCollisionMode.Manual,
+            //    QStart = 4,
+            //    QMax = 4,
+            //    QMin = 4
+            //});
             
             reader.GetRegion(out var region);
             Console.WriteLine($"Reader region : {region}");
@@ -72,7 +80,7 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
 
         public static void NewErrorReceived(object sender, ErrorNotificationEventArgs e)
         {
-            Console.WriteLine($"Command {e.CommandCode} returned an error: [{(byte)e.ErrorCode}] {e.CommandCode}");
+            Console.WriteLine($"Command {e.CommandCode} [{(byte)e.CommandCode}] returned an error: [{(byte)e.ErrorCode}] {e.ErrorCode}");
         }
 
         public static void NewNotificationReceived(object sender, NotificationEventArgs e)
