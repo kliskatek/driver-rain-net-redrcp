@@ -17,7 +17,6 @@ Provides high level methods that give access to RED [Reader Control Protocol (RC
   - [Error event handling](#error-event-handling)
   - [Perform asynchronous inventory](#perform-asynchronous-inventory)
   - [Basic Read and Write operations](#basic-read-and-write-operations)
-
 - [License](#license)
 
 
