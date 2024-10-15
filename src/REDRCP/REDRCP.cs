@@ -555,17 +555,6 @@ namespace Kliskatek.Driver.Rain.REDRCP
 
         public RcpResultType SetAntiCollisionMode(AntiCollisionModeParameters antiCollisionMode)
         {
-            //List<byte> argumentPayload = 
-            //[
-            //    (byte)antiCollisionMode.Mode,
-            //    antiCollisionMode.QStart,
-            //    antiCollisionMode.QMax,
-            //    antiCollisionMode.QMin];
-            //argumentPayload =
-            //[
-            //    (byte)antiCollisionMode.Mode,
-            //    antiCollisionMode.QStart
-            //];
             List<byte> argumentPayload = [(byte)0x00];
             switch (antiCollisionMode.Mode)
             {
