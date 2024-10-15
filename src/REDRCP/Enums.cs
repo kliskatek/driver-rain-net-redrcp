@@ -252,18 +252,12 @@
         SmartHoppingMode = 0x01
     }
 
-    //public enum AntiCollisionMode
-    //{
-    //    MultiTag = 3,
-    //    SingleTag = 32,
-    //    UniqueRecognition = 16,
-    //    Manual = 0
-    //}
-
     public enum AntiCollisionMode
     {
-        Manual = 0x01,
-        Auto = 0x03
+        Manual = 0x00,
+        MultiTag = 0x03,
+        UniqueRecognition = 0x10,
+        SingleTag = 0x20
     }
 
     public enum Registry
