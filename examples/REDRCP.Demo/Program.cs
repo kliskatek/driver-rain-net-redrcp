@@ -22,26 +22,21 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
 
             reader.NewNotificationReceived += NewNotificationReceived;
             reader.NewErrorReceived += NewErrorReceived;
-
-            //var antiCollisionResult = reader.SetAntiCollisionMode(new AntiCollisionModeParameters
-            //{
-            //    Mode = AntiCollisionMode.Manual,
-            //    QStart = 4,
-            //    QMax = 4,
-            //    QMin = 4
-            //});
             
             reader.GetRegion(out var region);
             Console.WriteLine($"Reader region : {region}");
 
             // Example Read procedure
-            string epc = "1234567890ABCDEF";
-            ushort startAddress = 5;
+            //string epc = "1234567890ABCDEF";
+            string epc = "511012032800300000005604";
+            ushort startAddress = 0;
             ushort wordCount = 2;
+            bool isDataRead = false;
             switch (reader.ReadTypeCTagData(epc, ParamMemoryBank.User, startAddress, wordCount, out var readData))
             {
                 case RcpResultType.Success:
                     Console.WriteLine($"Tag data : {readData}");
+                    isDataRead = true;
                     break;
                 case RcpResultType.ReaderError:
                     // Option 1: Get last error code recorded by reader
@@ -61,7 +56,11 @@ namespace Kliskatek.Driver.Rain.REDRCP.Demo
             }
 
             // Example write procedure
-            string dataToWrite = "FEDCBA0987654321";
+            // If data was read in the previous step, the data to write is the same data read with swapped words. Otherwise, it provides default data to be written.
+            string dataToWrite = isDataRead ?
+                readData.Substring(4) + readData.Substring(0, 4) :
+                "1234CDEF";
+
             switch (reader.WriteTypeCTagData(epc, ParamMemoryBank.User, startAddress, dataToWrite))
             {
                 case RcpResultType.Success:

@@ -28,9 +28,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
             lock (_lockErrorDictionary)
             {
                 errorCode = ErrorCode.OtherError;
-                if (!_lastErrorDictionary.TryGetValue(messageCode, out errorCode))
-                    return false;
-                return false;
+                return _lastErrorDictionary.TryGetValue(messageCode, out errorCode);
             }
         }
 

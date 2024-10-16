@@ -682,7 +682,7 @@ namespace Kliskatek.Driver.Rain.REDRCP
             var mb = (byte)memoryBank;
             var sa = BitConverter.GetBytes(startAddress).Reverse();
             var dt = Convert.FromHexString(dataToWrite);
-            var dl = BitConverter.GetBytes((ushort)dt.Length).Reverse();
+            var dl = BitConverter.GetBytes((ushort)(dt.Length/2)).Reverse();
 
             List<byte> argumentPayload = [];
             argumentPayload.AddRange(ap);
@@ -695,12 +695,26 @@ namespace Kliskatek.Driver.Rain.REDRCP
 
             var rcpResult =
                 ProcessRcpCommand(MessageCode.WriteTypeCTagData, out var responseArguments, argumentPayload);
-            var payload = responseArguments.ToArray();
 
-            for (int i=0; i < payload.Length; i++)
-                if (epcByteArray[i] != payload[i])
-                    return RcpResultType.OtherError;
-            return RcpResultType.Success;
+            switch (rcpResult)
+            {
+                case RcpResultType.Success:
+                    // ResponseArguments contains an extra 0x00 byte at position 0
+                    // not defined in the documentation. Discard this byte
+                    responseArguments.RemoveAt(0);
+                    var payload = responseArguments.ToArray();
+                    if (payload.Length != epcByteArray.Length)
+                        return RcpResultType.OtherError;
+
+                    for (int i = 0; i < payload.Length; i++)
+                        if (epcByteArray[i] != payload[i])
+                            return RcpResultType.OtherError;
+                    return RcpResultType.Success;
+                default:
+                    return rcpResult;
+            }
+            
+
         }
 
         #endregion

@@ -8,7 +8,7 @@
     <RootNamespace>Kliskatek.Driver.Rain.REDRCP</RootNamespace>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>A library that provides wraps RED Reader Control Protocol (RCP) commands, responses and notifications.</Title>
-    <Version>1.0.0</Version>
+    <Version>1.0.0-rc3</Version>
     <Authors>aritz.alonso.kliskatek, ibon.zalbide</Authors>
     <Company>Kliskatek</Company>
     <Product>Kliskatek.Driver.Rain</Product>
