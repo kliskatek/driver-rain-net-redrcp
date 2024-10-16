@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="REDRCP" Version="1.0.0-rc3" />
+    <PackageReference Include="REDRCP" Version="1.0.0" />
   </ItemGroup>
 
 </Project>
